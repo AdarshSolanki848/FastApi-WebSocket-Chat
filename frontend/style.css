@@ -1,0 +1,156 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#eceff1;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.chat-container{
+    width:420px;
+    height:650px;
+    background:white;
+    border-radius:18px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+}
+
+.header{
+    background:#4f46e5;
+    color:white;
+    text-align:center;
+    padding:18px;
+    font-size:22px;
+    font-weight:bold;
+}
+
+.join-section{
+    display:flex;
+    gap:10px;
+    padding:15px;
+    border-bottom:1px solid #ddd;
+}
+
+.join-section input{
+    flex:1;
+}
+
+.message-section input{
+    flex:1;
+}
+
+input{
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:10px;
+    outline:none;
+    font-size:15px;
+    transition:.2s;
+}
+
+input:focus{
+    border-color:#4f46e5;
+}
+
+button{
+    background:#4f46e5;
+    color:white;
+    border:none;
+    padding:12px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:.2s;
+}
+
+button:hover{
+    background:#4338ca;
+}
+
+#messages{
+    flex:1;
+    overflow-y:auto;
+    min-height: 0;
+    padding:15px;
+    background:#f8fafc;
+    scrollbar-width: none;
+}
+#messages::-webkit-scrollbar{
+    display:none;
+}
+.message{
+    background:white;
+    padding:10px 14px;
+    margin-bottom:10px;
+    border-radius:12px;
+    width:fit-content;
+    max-width:80%;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+    word-wrap:break-word;
+}
+
+.mine{
+    margin-left:auto;
+    background: rgba(79, 234, 79, 0.87);
+}
+.message-section{
+    display:flex;
+    gap:10px;
+    padding:15px;
+    border-top:1px solid #ddd;
+}
+
+button:disabled{
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+input:disabled{
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.user-joined-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 5px;
+}
+.user-joined{
+    width: fit-content;
+    background-color: rgba(128, 128, 128, 0.478);
+    color: green;
+    font-size: 10px;
+    padding: 5px;
+    border-radius: 8px;
+
+}
+.user-left-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 5px;
+}
+.user-left{
+    width: fit-content;
+    background-color: rgba(128, 128, 128, 0.478);
+    color: rgb(128, 0, 0);
+    font-size: 10px;
+    padding: 5px;
+    border-radius: 8px;
+
+}
+
+
+.onlineCount{
+    font-size: 15px;
+}
