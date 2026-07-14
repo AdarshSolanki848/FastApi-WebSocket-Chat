@@ -17,9 +17,20 @@
                 type="text"
                 id="username"
                 placeholder="Enter username">
-            <button id="joinBtn">Join Chat</button>
+            <button id="joinBtn" class="joinBtn">
+                <span id="joinText">Join</span>
+                <div id="joinSpinner" class="spinner hidden"></div>
+            </button>
         </div>
         <div id="messages"></div>
+        <div id="typingIndicator" class="typing-indicator hidden">
+            <span id="typingText"></span>
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
         <div class="message-section">
             <input
                 type="text"
@@ -31,3 +42,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+

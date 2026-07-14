@@ -6,27 +6,27 @@ const sendBtn=document.getElementById("sendBtn");
 const messages=document.getElementById("messages");
 const joinBtn=document.getElementById("joinBtn")
 const onlineCount=document.getElementById("onlineCount");
+const joinText=document.getElementById("joinText");
+const joinSpinner=document.getElementById("joinSpinner");
+const typingIndicator=document.getElementById("typingIndicator")
+const typingText=document.getElementById("typingText");
 
 let username="";
+let tempusername="";
+let isTyping=false;
+let typingTimeout=null;
+const typingUsers=new Set();
 
 joinBtn.addEventListener('click',()=>{
-    const name=usernameInput.value.trim();
-    if(name==="")return;
-    username = name;
-    joinBtn.disabled = true;
-    joinBtn.classList.add("joined");
-    joinBtn.textContent="Joined✔️";
-    usernameInput.disabled=true;
+    tempusername=usernameInput.value.trim();
+    if(tempusername==="")return;
     const joined_data={
         type:"user_joined",
-        username:username
+        username:tempusername
     };
-    // const onlineCount_data={
-    //     type:"online_count",
-    //     count:0
-    // }
+    setJoiningState();
     socket.send(JSON.stringify(joined_data));
-    // socket.send(JSON.stringify(onlineCount_data));
+    
 });
 
 socket.onopen=()=>{
@@ -48,13 +48,19 @@ sendBtn.addEventListener('click',()=>{
     messageInput.value="";
 });
 
-// document.addEventListener('keydown',(e)=>{
-//     if(e.key=='Enter'){
-//         if(input.value.trim()=="")return;
-//         socket.send(input.value);
-//         input.value="";
-//     }
-// });
+messageInput.addEventListener("input",()=>{
+    if(!isTyping){
+        isTyping=true;
+        socket.send(JSON.stringify({type:"typing"}));
+    }
+    clearTimeout(typingTimeout);
+    typingTimeout=setTimeout(()=>{
+        isTyping=false;
+        socket.send(JSON.stringify({type:"stopped_typing"}));
+    },2000);
+
+});
+
 
 socket.onmessage=(event)=>{
     const data=JSON.parse(event.data)
@@ -75,6 +81,18 @@ socket.onmessage=(event)=>{
             userLeftMessage(data);
             break;
         }
+        case "join_failed":{
+            joinFailed(data);
+            break;
+        }
+        case "typing":{
+            addTypingUser(data);
+            break;
+        }
+        case "stopped_typing":{
+            removeTypingUser(data);
+            break;
+        }
         default:
             console.warn("Unknown message type:", data.type);      
     }
@@ -92,12 +110,17 @@ function addMessage(data){
 }
 
 function userJoinedMessage(data){
+    
     const user_joined=document.createElement("div");
     const user_joined_container=document.createElement("div");
     user_joined.className="user-joined";
     user_joined_container.className="user-joined-container";
     user_joined.textContent=`${data.username} has joined`;
     user_joined_container.appendChild(user_joined);
+    if(tempusername===data.username){
+        username=tempusername;
+        setJoinedState();
+    }
     messages.appendChild(user_joined_container);
     messages.scrollTop = messages.scrollHeight;
 }
@@ -115,3 +138,66 @@ function userLeftMessage(data){
 function updateOnlineCount(data){
     onlineCount.textContent=`🟢 ${data.count} Online`;
 }
+
+function joinFailed(data){
+    alert(data.message);
+    resetJoinState();
+}
+
+function setJoiningState(){
+    joinBtn.disabled = true;
+    usernameInput.disabled = true;
+    joinText.textContent="Joining...";
+    joinSpinner.classList.remove("hidden");
+}
+
+function setJoinedState(){
+    joinBtn.disabled = true;
+    joinBtn.classList.add("joined");
+    joinText.textContent="Joined✔️";
+    usernameInput.disabled=true;
+    joinSpinner.classList.add("hidden");
+}
+
+function resetJoinState(){
+    joinBtn.disabled = false;
+    joinBtn.classList.remove("joined");
+    joinText.textContent="Join";
+    usernameInput.disabled=false;
+    joinSpinner.classList.add("hidden");
+}
+
+function addTypingUser(data){
+    typingUsers.add(data.username);
+    updateTypingIndicator();
+}
+
+function removeTypingUser(data){
+    
+    typingUsers.delete(data.username);
+    updateTypingIndicator();
+}
+
+function updateTypingIndicator(){
+    const users=[...typingUsers];
+    if(users.length===0){
+        typingText.textContent="";
+        typingIndicator.classList.add("hidden");
+        return;
+    }
+    typingIndicator.classList.remove("hidden");
+    switch(users.length){
+        case 1:{
+            typingText.textContent=`${users[0]} is typing`;
+            break;
+        }
+        case 2:{
+            typingText.textContent=`${users[0]} and ${users[1]} are typing`;
+            break;
+        }   
+        default:
+            typingText.textContent=`${users.length} users are typing`;
+    }
+}
+
+

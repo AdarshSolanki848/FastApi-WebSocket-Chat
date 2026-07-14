@@ -29,9 +29,26 @@ class ConnectionManager:
         data["username"]=self.active_connections[websocket]
         await self.broadcast(json.dumps(data))
         
+    async def send_to_client(self,websocket:WebSocket,data:dict):
+        await websocket.send_text(json.dumps(data))
+    
+    async def broadcast_typing_state(self,websocket:WebSocket,data:dict):
+        data["username"]=self.active_connections[websocket]
+        for connection in self.active_connections:
+            if(connection!=websocket):
+                await self.send_to_client(connection,data)
+
+
     async def register_user(self,websocket:WebSocket,data:dict):
-        self.active_connections[websocket]=data["username"]
-        await self.broadcast_online_count()
-        await self.broadcast(json.dumps(data))
+        if data["username"] in self.active_connections.values():
+            newdata={
+                "type":"join_failed",
+                "message":"Username is already taken"
+            }
+            await self.send_to_client(websocket,newdata)
+        else:
+            self.active_connections[websocket]=data["username"]
+            await self.broadcast_online_count()
+            await self.broadcast(json.dumps(data))
 
     

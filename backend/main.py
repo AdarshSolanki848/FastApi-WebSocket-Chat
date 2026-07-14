@@ -14,6 +14,8 @@ async def websocket_endpoint(websocket:WebSocket):
             data=json.loads(message)
             if(data["type"]=="user_joined"):
                 await manager.register_user(websocket,data)
+            elif data["type"]=="typing" or data["type"]=="stopped_typing":
+                await manager.broadcast_typing_state(websocket,data)
             else:
                 await manager.broadcast_message(websocket,data)
     except WebSocketDisconnect:
