@@ -1,7 +1,11 @@
 from fastapi import FastAPI, WebSocket,WebSocketDisconnect
 from manager import ConnectionManager
 import json
+from database import Base, engine
+import models
 app=FastAPI()
+
+Base.metadata.create_all(bind=engine)
 
 manager=ConnectionManager()
 
@@ -14,8 +18,6 @@ async def websocket_endpoint(websocket:WebSocket):
             data=json.loads(message)
             if(data["type"]=="user_joined"):
                 await manager.register_user(websocket,data)
-            elif data["type"]=="typing" or data["type"]=="stopped_typing":
-                await manager.broadcast_typing_state(websocket,data)
             else:
                 await manager.broadcast_message(websocket,data)
     except WebSocketDisconnect:

@@ -38,10 +38,11 @@ sendBtn.addEventListener('click',()=>{
         alert("⚠️Please enter your username!");
         return;
     }
-    if(messageInput.value.trim()=="")return;
+    const Message=messageInput.value.trim();
+    if(Message==="")return;
     const data={
         type:"chat",
-        message:messageInput.value
+        message:Message
     };
 
     socket.send(JSON.stringify(data));
@@ -110,21 +111,24 @@ function addMessage(data){
 }
 
 function userJoinedMessage(data){
-    
+    if(tempusername===data.username){
+        username=tempusername;
+        setJoinedState();
+        return;
+    }
     const user_joined=document.createElement("div");
     const user_joined_container=document.createElement("div");
     user_joined.className="user-joined";
     user_joined_container.className="user-joined-container";
     user_joined.textContent=`${data.username} has joined`;
     user_joined_container.appendChild(user_joined);
-    if(tempusername===data.username){
-        username=tempusername;
-        setJoinedState();
-    }
     messages.appendChild(user_joined_container);
     messages.scrollTop = messages.scrollHeight;
 }
 function userLeftMessage(data){
+    if(data.username===username)return;
+    typingUsers.delete(data.username);
+    updateTypingIndicator();
     const user_left=document.createElement("div");
     const user_left_container=document.createElement("div");
     user_left.className="user-left";
@@ -168,12 +172,14 @@ function resetJoinState(){
 }
 
 function addTypingUser(data){
+    if(data.username==username)return;
     typingUsers.add(data.username);
     updateTypingIndicator();
 }
 
 function removeTypingUser(data){
     
+    if(data.username==username)return;
     typingUsers.delete(data.username);
     updateTypingIndicator();
 }

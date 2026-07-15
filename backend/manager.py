@@ -1,4 +1,4 @@
-from fastapi import WebSocket
+from fastapi import WebSocket,WebSocketDisconnect
 import json
 class ConnectionManager:
     def __init__(self):
@@ -18,25 +18,31 @@ class ConnectionManager:
             print("No User registered")
 
     async def broadcast(self,message:str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
-        
+        dead_connections=[]
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_text(message)
+            except WebSocketDisconnect:
+                dead_connections.append(connection)
+        for connection in dead_connections:
+            await self.disconnect(connection)
+
     async def broadcast_online_count(self):
         data={"type":"online_count","count":len(self.active_connections)}
         await self.broadcast(json.dumps(data))
 
     async def broadcast_message(self,websocket:WebSocket,data:dict):
+        if websocket not in self.active_connections:
+            return
         data["username"]=self.active_connections[websocket]
         await self.broadcast(json.dumps(data))
         
     async def send_to_client(self,websocket:WebSocket,data:dict):
         await websocket.send_text(json.dumps(data))
     
-    async def broadcast_typing_state(self,websocket:WebSocket,data:dict):
-        data["username"]=self.active_connections[websocket]
-        for connection in self.active_connections:
-            if(connection!=websocket):
-                await self.send_to_client(connection,data)
+    # async def broadcast_typing_state(self,websocket:WebSocket,data:dict):
+    #     data["username"]=self.active_connections[websocket]
+    #     await self.broadcast(self,json.dumps(data))
 
 
     async def register_user(self,websocket:WebSocket,data:dict):
