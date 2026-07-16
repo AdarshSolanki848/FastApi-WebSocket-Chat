@@ -1,27 +1,25 @@
-from fastapi import FastAPI, WebSocket,WebSocketDisconnect
-from backend.connection_manager import ConnectionManager
-import json
+from fastapi import FastAPI
 from database import Base, engine
-import models
+from routes.auth import router as auth_router
+from websocket.chat import router as chat_router
+from fastapi.middleware.cors import CORSMiddleware
 app=FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "http://127.0.0.1:62308",
+        "http://localhost:62308",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 Base.metadata.create_all(bind=engine)
+app.include_router(auth_router)
+app.include_router(chat_router)
 
-manager=ConnectionManager()
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket:WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            message=await websocket.receive_text()
-            data=json.loads(message)
-            if(data["type"]=="user_joined"):
-                await manager.register_user(websocket,data)
-            else:
-                await manager.broadcast_message(websocket,data)
-    except WebSocketDisconnect:
-        await manager.disconnect(websocket)
-        print("A user disconnected")
         
     

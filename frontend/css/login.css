@@ -1,0 +1,287 @@
+/* ===== Reset ===== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Poppins',sans-serif;
+    background:#0F172A;
+    color:#F8FAFC;
+
+    min-height:100vh;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+/* ===== Container ===== */
+
+.container{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+}
+
+/* ===== Card ===== */
+
+.auth-card{
+
+    width:100%;
+    max-width:430px;
+
+    background:#1E293B;
+
+    border:1px solid #334155;
+    border-radius:18px;
+
+    padding:40px 35px;
+
+    box-shadow:0 20px 50px rgba(0,0,0,.35);
+
+    animation:fadeIn .5s ease;
+}
+
+/* ===== Logo ===== */
+
+.logo{
+
+    width:70px;
+    height:70px;
+
+    margin:0 auto 20px;
+
+    border-radius:50%;
+
+    background:#2563EB;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    font-size:30px;
+}
+
+/* ===== Heading ===== */
+
+.auth-card h1{
+
+    text-align:center;
+    font-size:30px;
+
+    margin-bottom:10px;
+}
+
+.subtitle{
+
+    text-align:center;
+
+    color:#94A3B8;
+
+    margin-bottom:35px;
+}
+
+/* ===== Form ===== */
+
+.input-group{
+
+    display:flex;
+    flex-direction:column;
+
+    margin-bottom:22px;
+}
+
+.input-group label{
+
+    margin-bottom:8px;
+
+    font-size:14px;
+    font-weight:500;
+}
+
+/* ===== Inputs ===== */
+
+.input-group input{
+
+    width:100%;
+
+    background:#334155;
+
+    border:2px solid transparent;
+
+    color:white;
+
+    font-size:15px;
+
+    padding:14px 15px;
+
+    border-radius:12px;
+
+    outline:none;
+
+    transition:.25s;
+}
+
+.input-group input::placeholder{
+
+    color:#94A3B8;
+}
+
+.input-group input:focus{
+
+    border-color:#3B82F6;
+
+    box-shadow:0 0 12px rgba(59,130,246,.35);
+}
+
+/* ===== Password ===== */
+
+.password-box{
+
+    position:relative;
+}
+
+.eye-btn{
+
+    position:absolute;
+
+    top:50%;
+    right:14px;
+
+    transform:translateY(-50%);
+
+    background:none;
+
+    border:none;
+
+    cursor:pointer;
+
+    font-size:18px;
+}
+
+.eye-icon{
+    width:22px;
+    height:22px;
+    opacity:.7;
+    transition:.2s;
+}
+
+.eye-btn:hover .eye-icon{
+    opacity:1;
+    transform:scale(1.1);
+}
+
+/* ===== Button ===== */
+
+.primary-btn{
+
+    width:100%;
+
+    margin-top:10px;
+
+    padding:15px;
+
+    border:none;
+
+    border-radius:12px;
+
+    background:#2563EB;
+
+    color:white;
+
+    font-size:16px;
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:.25s;
+}
+
+.primary-btn:hover{
+
+    background:#1D4ED8;
+
+    transform:translateY(-2px);
+}
+
+.primary-btn:active{
+
+    transform:scale(.98);
+}
+
+/* ===== Message ===== */
+
+.message{
+
+    text-align:center;
+
+    min-height:22px;
+
+    margin-top:-5px;
+    margin-bottom:10px;
+
+    font-size:14px;
+}
+
+/* ===== Bottom Link ===== */
+
+.switch-page{
+
+    margin-top:28px;
+
+    text-align:center;
+
+    color:#94A3B8;
+}
+
+.switch-page a{
+
+    color:#60A5FA;
+
+    text-decoration:none;
+
+    font-weight:600;
+}
+
+.switch-page a:hover{
+
+    text-decoration:underline;
+}
+
+/* ===== Animation ===== */
+
+@keyframes fadeIn{
+
+    from{
+
+        opacity:0;
+        transform:translateY(20px);
+    }
+
+    to{
+
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+/* ===== Mobile ===== */
+
+@media(max-width:500px){
+
+    .auth-card{
+
+        padding:30px 22px;
+    }
+
+    .auth-card h1{
+
+        font-size:26px;
+    }
+
+}

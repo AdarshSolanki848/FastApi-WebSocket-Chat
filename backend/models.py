@@ -11,6 +11,10 @@ class User(Base):
         unique=True,
         nullable=False
     )
+    hashed_password:Mapped[str]=mapped_column(
+        String,
+        nullable=False
+    )
     created_at:Mapped[datetime]=mapped_column(
         DateTime(timezone=True),
         default=lambda:datetime.now(UTC)

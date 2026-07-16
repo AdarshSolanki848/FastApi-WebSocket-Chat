@@ -1,4 +1,9 @@
-const socket=new WebSocket("ws://127.0.0.1:8000/ws")
+const token=localStorage.getItem("token");
+if(!token){
+    window.location.href="login.html";
+}
+
+const socket=new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`)
 
 const messageInput=document.getElementById("messageInput");
 const usernameInput=document.getElementById("username")
