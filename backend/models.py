@@ -3,7 +3,7 @@ from sqlalchemy import DateTime,ForeignKey,String
 from sqlalchemy.orm import Mapped,mapped_column,relationship
 from database import Base
 
-class Users(Base):
+class User(Base):
     __tablename__="users"
     id:Mapped[int]=mapped_column(primary_key=True)
     username:Mapped[str]=mapped_column(
@@ -34,6 +34,6 @@ class Message(Base):
     sender_id:Mapped[int]=mapped_column(
         ForeignKey("users.id")
     )
-    sender:Mapped[list["Users"]]=relationship(
+    sender:Mapped[list["User"]]=relationship(
         back_populates="messages"
     )

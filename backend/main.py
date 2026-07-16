@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket,WebSocketDisconnect
-from manager import ConnectionManager
+from backend.connection_manager import ConnectionManager
 import json
 from database import Base, engine
 import models
