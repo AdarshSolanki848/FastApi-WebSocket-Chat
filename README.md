@@ -1,92 +1,276 @@
-# FastAPI WebSocket Chat
+# 💬 ChatSphere
 
-A real-time chat application built using **FastAPI**, **WebSockets**, **HTML**, **CSS**, and **Vanilla JavaScript**. This project was created to learn how real-time communication works from the ground up without using frontend frameworks.
+A modern real-time chat application built with **FastAPI**, **WebSockets**, **SQLAlchemy**, and **JWT Authentication**.
+
+ChatSphere is designed to be a scalable messaging platform with secure authentication, real-time messaging, and modern architecture. The project is being developed step-by-step to include features found in production-grade chat applications.
+
+---
 
 ## ✨ Features
 
-* 💬 Real-time messaging using WebSockets
-* 👤 Unique username registration
-* 🚫 Duplicate username validation
-* 🟢 Live online user count
-* 📢 User joined and left notifications
-* ⌨️ Real-time typing indicator with animated dots
-* 👥 Supports multiple users typing simultaneously
-* 🎨 Clean and responsive chat interface
-* 📜 Auto-scrolling chat window
-* 🔒 Server-controlled usernames to prevent message spoofing
+### Authentication
+- User Registration
+- User Login
+- JWT Authentication
+- Argon2 Password Hashing
+- Protected Routes
+- Client-side Validation
 
-## 🛠️ Tech Stack
+### Real-Time Chat
+- WebSocket-based communication
+- Multiple users chatting simultaneously
+- Online user count
+- Join/Leave notifications
+- Typing indicator
+- Duplicate username prevention (legacy implementation)
 
-* **Backend:** FastAPI, Uvicorn
-* **Frontend:** HTML, CSS, Vanilla JavaScript
-* **Communication:** WebSockets
+### Frontend
+- Responsive Login & Register pages
+- Modern Dark UI
+- SVG Password Visibility Toggle
+- Reusable API Layer
+- Clean Project Structure
 
-## 🚀 Getting Started
+### Backend
+- FastAPI
+- SQLAlchemy ORM
+- SQLite Database
+- JWT Token Generation
+- Password Hashing
+- Modular Architecture
 
-### 1. Clone the repository
+---
 
-```bash
-git clone <repository-url>
-cd FastApi-WebSocket-Chat
+# 🛠 Tech Stack
+
+## Frontend
+
+- HTML5
+- CSS3
+- JavaScript (ES6)
+
+## Backend
+
+- FastAPI
+- WebSockets
+- SQLAlchemy
+- SQLite
+- JWT Authentication
+- Argon2 Password Hashing
+
+---
+
+# 📂 Project Structure
+
+```
+ChatSphere/
+│
+├── backend/
+│   ├── models.py
+│   ├── database.py
+│   ├── schemas.py
+│   ├── auth.py
+│   ├── main.py
+│   │
+│   ├── route/
+│   │   └── auth.py
+│   │
+│   └── websocket/
+│       ├── chat.py
+│       └── manager.py
+│
+├── frontend/
+│   ├── login.html
+│   ├── register.html
+│   ├── chat.html
+│   │
+│   ├── css/
+│   │   ├── auth.css
+│   │   └── chat.css
+│   │
+│   ├── js/
+│   │   ├── api.js
+│   │   ├── login.js
+│   │   ├── register.js
+│   │   └── chat.js
+│   │
+│   └── assets/
+│       └── icons/
+│
+├── requirements.txt
+└── README.md
 ```
 
-### 2. Create a virtual environment
+---
+
+# 🚀 Getting Started
+
+## Clone the repository
+
+```bash
+git clone https://github.com/yourusername/ChatSphere.git
+
+cd ChatSphere
+```
+
+---
+
+## Create Virtual Environment
+
+### Windows
 
 ```bash
 python -m venv .venv
-```
 
-### 3. Activate the virtual environment
-
-**Windows**
-
-```bash
 .venv\Scripts\activate
 ```
 
-**Linux/macOS**
+### Linux / macOS
 
 ```bash
+python3 -m venv .venv
+
 source .venv/bin/activate
 ```
 
-### 4. Install dependencies
+---
+
+## Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5. Start the FastAPI server
+---
+
+## Start Backend
 
 ```bash
+cd backend
+
 uvicorn main:app --reload
 ```
 
-### 6. Open the frontend
+Backend runs on
 
-Open `frontend/index.html` in your browser.
+```
+http://127.0.0.1:8000
+```
 
-## 📚 Concepts Practiced
+---
 
-* FastAPI WebSockets
-* Asynchronous programming with `async`/`await`
-* Connection management
-* Real-time event broadcasting
-* JSON-based communication
-* Client-side state management
-* Debouncing using `setTimeout`
-* JavaScript `Set` for tracking typing users
-* DOM manipulation
-* Clean separation of frontend and backend responsibilities
+## Start Frontend
 
-## 🌱 Future Improvements
+Open the frontend using **Live Server** (VS Code extension) or any static server.
 
-* Message persistence using SQLite
-* Authentication and login
-* Private messaging
-* Chat rooms
-* Message timestamps
-* Read receipts
-* File sharing
-* Emoji support
-* Deploy the application online
+---
+
+# Authentication Flow
+
+```
+Register
+      │
+      ▼
+Password Hashing (Argon2)
+      │
+      ▼
+Store User in Database
+      │
+      ▼
+Login
+      │
+      ▼
+Verify Password
+      │
+      ▼
+Generate JWT
+      │
+      ▼
+Store JWT in Local Storage
+      │
+      ▼
+Access Chat
+```
+
+---
+
+# Database
+
+Current database contains
+
+## Users
+
+| Field | Type |
+|--------|------|
+| id | Integer |
+| username | String |
+| hashed_password | String |
+| created_at | DateTime |
+
+---
+
+# Current Features
+
+- ✅ User Registration
+- ✅ User Login
+- ✅ JWT Authentication
+- ✅ Password Hashing
+- ✅ SQLAlchemy Integration
+- ✅ SQLite Database
+- ✅ Real-time Chat
+- ✅ WebSockets
+- ✅ Typing Indicator
+- ✅ Online Users Counter
+- ✅ Responsive Authentication UI
+
+---
+
+# Upcoming Features
+
+- JWT Authentication for WebSocket
+- Persistent Chat History
+- Personal Chats
+- Group Chats
+- File Uploads
+- Image Sharing
+- Profile Pictures
+- Read Receipts
+- Message Search
+- Emoji Picker
+- Notifications
+- User Settings
+- Docker Support
+- PostgreSQL
+- Redis
+- Background Task Queue (Celery)
+- Deployment
+
+---
+
+# Screenshots
+
+Coming Soon
+
+---
+
+# Contributing
+
+Contributions, issues, and feature requests are welcome.
+
+Feel free to fork the repository and submit a pull request.
+
+---
+
+# License
+
+This project is licensed under the MIT License.
+
+---
+
+# Author
+
+**Adarsh Singh Solanki**
+
+GitHub: https://github.com/AdarshSolanki848
+
+LinkedIn: https://www.linkedin.com/in/adarsh-singh-solanki/
