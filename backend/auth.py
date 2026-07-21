@@ -31,6 +31,7 @@ def verify_access_token(token:str):
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
-        return payload
+        username=payload.get("sub")
+        return username
     except JWTError:
         return None

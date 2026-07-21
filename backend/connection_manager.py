@@ -47,16 +47,14 @@ class ConnectionManager:
     #     await self.broadcast(self,json.dumps(data))
 
 
-    async def register_user(self,websocket:WebSocket,data:dict):
-        if data["username"] in self.active_connections.values():
-            newdata={
-                "type":"join_failed",
-                "message":"Username is already taken"
-            }
-            await self.send_to_client(websocket,newdata)
-        else:
-            self.active_connections[websocket]=data["username"]
+    async def register_user(self,websocket:WebSocket,username:str):
+            self.active_connections[websocket]=username
+
             await self.broadcast_online_count()
-            await self.broadcast(json.dumps(data))
+            
+            await self.broadcast(json.dumps({
+                "type":"user_joined",
+                "username":username
+            }))
 
     

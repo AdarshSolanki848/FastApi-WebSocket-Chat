@@ -1,3 +1,4 @@
+import { getCurrentUser,getToken } from "./auth.js";
 const token=localStorage.getItem("token");
 if(!token){
     window.location.href="login.html";
@@ -9,40 +10,22 @@ const messageInput=document.getElementById("messageInput");
 const usernameInput=document.getElementById("username")
 const sendBtn=document.getElementById("sendBtn");
 const messages=document.getElementById("messages");
-const joinBtn=document.getElementById("joinBtn")
 const onlineCount=document.getElementById("onlineCount");
-const joinText=document.getElementById("joinText");
-const joinSpinner=document.getElementById("joinSpinner");
 const typingIndicator=document.getElementById("typingIndicator")
 const typingText=document.getElementById("typingText");
-
-let username="";
-let tempusername="";
+const loginUsername=document.getElementById("loginUsername");
+let username=getCurrentUser();
 let isTyping=false;
 let typingTimeout=null;
 const typingUsers=new Set();
 
-joinBtn.addEventListener('click',()=>{
-    tempusername=usernameInput.value.trim();
-    if(tempusername==="")return;
-    const joined_data={
-        type:"user_joined",
-        username:tempusername
-    };
-    setJoiningState();
-    socket.send(JSON.stringify(joined_data));
-    
-});
 
+loginUsername.textContent=username;
 socket.onopen=()=>{
     console.log("Connected!");
 };
 
 sendBtn.addEventListener('click',()=>{
-    if(username===""){
-        alert("⚠️Please enter your username!");
-        return;
-    }
     const Message=messageInput.value.trim();
     if(Message==="")return;
     const data={
@@ -116,11 +99,6 @@ function addMessage(data){
 }
 
 function userJoinedMessage(data){
-    if(tempusername===data.username){
-        username=tempusername;
-        setJoinedState();
-        return;
-    }
     const user_joined=document.createElement("div");
     const user_joined_container=document.createElement("div");
     user_joined.className="user-joined";
@@ -148,33 +126,7 @@ function updateOnlineCount(data){
     onlineCount.textContent=`🟢 ${data.count} Online`;
 }
 
-function joinFailed(data){
-    alert(data.message);
-    resetJoinState();
-}
 
-function setJoiningState(){
-    joinBtn.disabled = true;
-    usernameInput.disabled = true;
-    joinText.textContent="Joining...";
-    joinSpinner.classList.remove("hidden");
-}
-
-function setJoinedState(){
-    joinBtn.disabled = true;
-    joinBtn.classList.add("joined");
-    joinText.textContent="Joined✔️";
-    usernameInput.disabled=true;
-    joinSpinner.classList.add("hidden");
-}
-
-function resetJoinState(){
-    joinBtn.disabled = false;
-    joinBtn.classList.remove("joined");
-    joinText.textContent="Join";
-    usernameInput.disabled=false;
-    joinSpinner.classList.add("hidden");
-}
 
 function addTypingUser(data){
     if(data.username==username)return;

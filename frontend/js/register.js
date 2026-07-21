@@ -6,7 +6,6 @@ const message=document.getElementById("message");
 const registerBtn=document.getElementById("registerBtn");
 const togglePassword=document.getElementById("togglePassword");
 const toggleConfirmPassword=document.getElementById("toggleConfirmPassword");
-
 registerForm.addEventListener("submit",async(event)=>{
     event.preventDefault();
     const username=usernameInput.value.trim();
@@ -30,11 +29,13 @@ registerForm.addEventListener("submit",async(event)=>{
 
         if(!response.ok){
             message.textContent=data.detail;
+            return;
         }
-        message.textContent="Account Created Successfully! Redirecting...";
-        setTimeout(()=>{
-            window.location.href="login.html";
-        },1500);
+        
+        
+        window.location.href="login.html";
+        
+              
     }
     catch(error){
         console.error(error);

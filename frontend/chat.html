@@ -10,17 +10,8 @@
     <div class="chat-container">
         <div class="header">
             <h2>💬PulseChat </h2>
+            <span id="loginUsername" class="login-username">👤Guest</span>
             <span id="onlineCount" class="onlineCount">🟢 0 Online</span>
-        </div>
-        <div class="join-section">
-            <input
-                type="text"
-                id="username"
-                placeholder="Enter username">
-            <button id="joinBtn" class="joinBtn">
-                <span id="joinText">Join</span>
-                <div id="joinSpinner" class="spinner hidden"></div>
-            </button>
         </div>
         <div id="messages"></div>
         <div id="typingIndicator" class="typing-indicator hidden">
@@ -39,7 +30,7 @@
             <button id="sendBtn">Send</button>
         </div>
     </div>
-    <script src="js/chat.js"></script>
+    <script type="module" src="js/chat.js"></script>
 </body>
 </html>
 

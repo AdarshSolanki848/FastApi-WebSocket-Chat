@@ -159,13 +159,10 @@ input:disabled{
     font-size: 15px;
 }
 
-.spinner{
-    width:14px;
-    height:14px;
-    border:2px solid rgba(255,255,255,.4);
-    border-top:2px solid white;
-    border-radius:50%;
-    animation:spin .7s linear infinite;
+.login-username{
+    font-size: medium;
+    margin-right: 50px;
+    
 }
 
 .hidden{
