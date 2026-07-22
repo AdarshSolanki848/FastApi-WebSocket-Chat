@@ -30,6 +30,11 @@ class User(Base):
         cascade="all, delete-orphan",
         lazy="selectin"
     )
+    message_reads: Mapped[list["MessageRead"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
 
 class Conversation(Base):
     __tablename__="conversations"
@@ -115,4 +120,34 @@ class Message(Base):
         back_populates="messages",
         lazy="selectin"
     )
+    read_by: Mapped[list["MessageRead"]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+
+class MessageRead(Base):
+    __tablename__="message_reads"
+    message_id:Mapped[int]=mapped_column(
+        ForeignKey("messages.id"),
+        primary_key=True
+    )
+    user_id:Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        primary_key=True
+    )
+
+    read_at:Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC)
+    )
     
+    message: Mapped["Message"] = relationship(
+        back_populates="read_by",
+        lazy="selectin"
+    )
+
+    user: Mapped["User"] = relationship(
+        back_populates="message_reads",
+        lazy="selectin"
+    )

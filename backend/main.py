@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from database import Base, engine
 from routes.auth import router as auth_router
+from routes.conversation import router as conversation_router
 from websocket.chat import router as chat_router
 from fastapi.middleware.cors import CORSMiddleware
-app=FastAPI()
+app=FastAPI(
+    title="Chat Application API",
+    version="1.0.0"
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -21,6 +25,7 @@ app.add_middleware(
 )
 Base.metadata.create_all(bind=engine)
 app.include_router(auth_router)
+app.include_router(conversation_router)
 app.include_router(chat_router)
 
 

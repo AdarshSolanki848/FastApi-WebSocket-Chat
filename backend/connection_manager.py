@@ -1,60 +1,29 @@
-from fastapi import WebSocket,WebSocketDisconnect
-import json
-from database import SessionLocal
-import crud
+from fastapi import WebSocket
 class ConnectionManager:
     def __init__(self):
-        self.active_connections={}
+        self.active_connections:dict[int,WebSocket]={}
+        self.websocket_users:dict[WebSocket,int]={}
 
     async def connect(self, websocket:WebSocket):
         await websocket.accept()
-        # self.active_connections.append(websocket)
+
     async def disconnect(self,websocket:WebSocket):
-        try:
-            username=self.active_connections[websocket]
-            del self.active_connections[websocket]
-            await self.broadcast_online_count()
-            data={"type":"user_left","username":username}
-            await self.broadcast(json.dumps(data))
-        except KeyError:
-            print("No User registered")
-
-    async def broadcast(self,message:str):
-        dead_connections=[]
-        for connection in list(self.active_connections):
-            try:
-                await connection.send_text(message)
-            except WebSocketDisconnect:
-                dead_connections.append(connection)
-        for connection in dead_connections:
-            await self.disconnect(connection)
-
-    async def broadcast_online_count(self):
-        data={"type":"online_count","count":len(self.active_connections)}
-        await self.broadcast(json.dumps(data))
-
-    async def broadcast_message(self,websocket:WebSocket,data:dict):
-        if websocket not in self.active_connections:
+        user_id=self.websocket_users.get(websocket)
+        if user_id is None:
             return
-        data["username"]=self.active_connections[websocket]
-        await self.broadcast(json.dumps(data))
-        
-    async def send_to_client(self,websocket:WebSocket,data:dict):
-        await websocket.send_text(json.dumps(data))
+        del self.active_connections[user_id]
+        del self.websocket_users[websocket]
     
-    # async def broadcast_typing_state(self,websocket:WebSocket,data:dict):
-    #     data["username"]=self.active_connections[websocket]
-    #     await self.broadcast(self,json.dumps(data))
-
-
-    async def register_user(self,websocket:WebSocket,username:str):
-            self.active_connections[websocket]=username
-
-            await self.broadcast_online_count()
-            
-            await self.broadcast(json.dumps({
-                "type":"user_joined",
-                "username":username
-            }))
+    async def send_to_user(self,user_id:int,data:dict):
+        websocket=self.active_connections.get(user_id)
+        if websocket is None:
+            return
+        await websocket.send_json(data)
+    
+    async def register_user(self,websocket:WebSocket,user_id:int):
+            self.active_connections[user_id]=websocket
+            self.websocket_users[websocket]=user_id
+    def get_user_id(self,websocket:WebSocket):
+        return self.websocket_users.get(websocket)
 
     

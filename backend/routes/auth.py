@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException,Depends
 import auth
 import crud
 from database import SessionLocal
-from schemas import RegisterRequest,LoginRequest,TokenResponse
+from schemas import RegisterRequest,TokenResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
 
 router=APIRouter(prefix="/auth",tags=["Authentication"])
 
@@ -26,24 +28,23 @@ def register(request:RegisterRequest):
         db.close()
 
 @router.post("/login",response_model=TokenResponse)
-def login(request:LoginRequest):
-    db=SessionLocal()
-    try:
-        user=crud.get_user_by_username(db,request.username)
-        if not user:
-            raise HTTPException(
-                status_code=401,
-                detail="invalid username or password"
-            )
-        if not auth.verify_password(request.password,user.hashed_password):
-            raise HTTPException(
-                status_code=401,
-                detail="invalid username or password"
-            )
-        token=auth.create_access_token({"sub":user.username})
-        return{
-            "access_token":token,
-            "token_type":"bearer"
-        }
-    finally:
-        db.close()
+def login(form_data: OAuth2PasswordRequestForm = Depends(),db:Session=Depends(auth.get_db)):
+    
+    user=crud.get_user_by_username(db,form_data.username)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="invalid username or password"
+        )
+    if not auth.verify_password(form_data.password,user.hashed_password):
+        raise HTTPException(
+            status_code=401,
+            detail="invalid username or password"
+        )
+    token=auth.create_access_token({"sub":str(user.id)})
+    return{
+        "access_token":token,
+        "token_type":"bearer"
+    }
+    
+        

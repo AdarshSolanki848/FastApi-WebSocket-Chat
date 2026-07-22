@@ -1,0 +1,215 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+import crud
+from database import SessionLocal
+from auth import get_current_user,get_db
+from models import User
+from schemas import (
+    ConversationResponse,
+    MessageResponse,
+    ConversationMemberResponse,
+    CreatePrivateConversationRequest,
+    CreateGroupConversationRequest,
+    AddMemberRequest,
+    MakeAdminRequest,
+    CreateMessageRequest
+)
+
+router=APIRouter(prefix="/conversation",tags=["Conversation"])
+
+@router.post("/private",response_model=ConversationResponse)
+def create_private_conversation(
+        request:CreatePrivateConversationRequest, 
+        db:Session=Depends(get_db), 
+        current_user:User=Depends(get_current_user)
+    ):
+    try:
+        conversation = crud.create_private_conversation(
+            db,
+            current_user.id,
+            request.user_id
+        )
+        return conversation
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+@router.post("/group",response_model=ConversationResponse)
+def create_group_conversation(
+        request:CreateGroupConversationRequest,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    
+    try:
+        conversation = crud.create_group_conversation(
+            db,
+            current_user.id,
+            request.name,
+            request.member_ids
+        )
+        return conversation
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+@router.get("",response_model=list[ConversationResponse])
+def get_user_conversations(
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    conversations = crud.get_user_conversations(
+        db,
+        current_user.id
+    )
+    return conversations
+
+    
+@router.get("/{conversation_id}",response_model=ConversationResponse)
+def get_conversation(conversation_id:int,
+                     db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    conversation=crud.get_conversation_by_id(
+        db,
+        conversation_id
+    )
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation does not exist."
+        )
+    if not crud.is_member(db,conversation_id,current_user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="You are not a member of this conversation."
+        )
+    return conversation
+
+@router.get("/{conversation_id}/messages",response_model=list[MessageResponse])
+def get_conversation_messages(conversation_id:int,
+                     db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    conversation=crud.get_conversation_by_id(
+        db,
+        conversation_id
+    )
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation does not exist."
+        )
+    if not crud.is_member(db,conversation_id,current_user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="You are not a member of this conversation."
+        )
+    return crud.get_conversation_messages(
+        db,
+        conversation_id
+    )
+
+@router.post("/{conversation_id}/messages",response_model=MessageResponse)
+def create_messages(
+        request:CreateMessageRequest,
+        conversation_id:int,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    conversation=crud.get_conversation_by_id(
+        db,
+        conversation_id
+    )
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation does not exist."
+        )
+    if not crud.is_member(db,conversation_id,current_user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="You are not a member of this conversation."
+        )
+    try:
+        message=crud.create_message(
+            db,
+            conversation_id,
+            current_user.id,
+            request.content
+        )
+        return message
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+      
+@router.post("/{conversation_id}/members",response_model=ConversationMemberResponse)
+def add_member(
+        request:AddMemberRequest,
+        conversation_id:int,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    try:
+        member=crud.add_member(
+            db,
+            conversation_id,
+            current_user.id,
+            request.user_id
+        )
+        return member
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    
+@router.post("/{conversation_id}/admins",response_model=ConversationMemberResponse)
+def make_admin(
+        request:MakeAdminRequest,
+        conversation_id:int,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    try:
+        admin=crud.make_admin(
+            db,
+            conversation_id,
+            current_user.id,
+            request.user_id
+        )
+        return admin
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    
+@router.delete("/{conversation_id}/members/{member_id}",response_model=ConversationMemberResponse)
+def remove_member(
+        conversation_id:int,
+        member_id:int,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    try:
+        member=crud.remove_member(
+            db,
+            conversation_id,
+            current_user.id,
+            member_id
+        )
+        return member
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )

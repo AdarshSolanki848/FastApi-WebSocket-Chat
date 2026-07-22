@@ -1,13 +1,12 @@
 from sqlalchemy.orm import Session,aliased
-from sqlalchemy import select,func
-
+from sqlalchemy import select,func,exists
 from models import (
     User,
     Conversation,
     ConversationMember,
-    Message
+    Message,
+    MessageRead
 )
-
 from enums import ConversationType, MemberRole
 
 
@@ -64,6 +63,11 @@ def get_private_conversation(db:Session,user1_id:int,user2_id:int):
 def create_private_conversation(db:Session,user1_id:int,user2_id:int):
     if user1_id == user2_id:
         raise ValueError("A user cannot create a private conversation with themselves.")
+    if not get_user_by_id(db,user1_id):
+        raise ValueError(f"A user {user1_id} does not exist.")
+    if not get_user_by_id(db,user2_id):
+        raise ValueError(f"A user {user2_id} does not exist.")
+    
     conversation=get_private_conversation(db,user1_id,user2_id)
     if conversation:
         return conversation
@@ -224,7 +228,6 @@ def add_member(db:Session, conversation_id:int, requester_id:int, new_member_id:
         db.rollback()
         raise
 
-
 def make_admin(db:Session,conversation_id:int,requester_id:int,member_id:int):
     conversation=get_conversation_by_id(db,conversation_id)
     if not conversation:
@@ -281,7 +284,6 @@ def get_admin_count(db:Session, conversation_id:int):
     )
     return db.scalar(query)
 
-
 def remove_member(db:Session,conversation_id:int,requester_id:int,member_id:int):
     conversation=get_conversation_by_id(db,conversation_id)
     if not conversation:
@@ -312,18 +314,25 @@ def remove_member(db:Session,conversation_id:int,requester_id:int,member_id:int)
         if get_member_count(db,conversation_id)==0:
             db.delete(conversation)
             db.commit()
-            return True
+            return membership
         if get_admin_count(db,conversation_id)==0:
             new_admin=db.scalar(select(ConversationMember).where(ConversationMember.conversation_id==conversation_id))
             new_admin.role=MemberRole.ADMIN
         db.commit()
         db.refresh(conversation)
-        return conversation
+        return membership
     except Exception:
         db.rollback()
         raise
 
-
+def get_conversation_members(db:Session,conversation_id:int):
+    query=(
+        select(ConversationMember)
+        .where(
+            ConversationMember.conversation_id==conversation_id
+        )
+    )
+    return db.scalars(query).all()
 #============================================
 # MESSAGE CRUD
 #============================================
@@ -370,7 +379,7 @@ def get_conversation_messages(db:Session,conversation_id:int):
     )
     return db.scalars(query).all()
 
-def delete_message(db:Session,message_id):
+def delete_message(db:Session,message_id:int):
     message=get_message_by_id(db,message_id)
     if not message:
         raise ValueError("Message does not exist.")
@@ -378,6 +387,40 @@ def delete_message(db:Session,message_id):
         db.delete(message)
         db.commit()
         return message
+    except Exception:
+        db.rollback()
+        raise
+
+def mark_conversation_read(db:Session,conversation_id:int,user_id:int):
+    if not get_conversation_by_id(db,conversation_id):
+        raise ValueError("Conversation does not exist.")
+    if not get_user_by_id(db,user_id):
+        raise ValueError(f"User {user_id} does not exist.")
+    if not is_member(db,conversation_id,user_id):
+        raise ValueError(f"User {user_id} is not a member of conversation.")
+    unread_messages=db.scalars(
+        select(Message)
+        .where(
+            Message.conversation_id==conversation_id,
+            Message.sender_id!=user_id,
+            ~exists()
+            .where(
+                MessageRead.message_id==Message.id,
+                MessageRead.user_id==user_id
+            )
+        )
+
+    ).all()
+    try:
+        for message in unread_messages:
+            db.add(
+                MessageRead(
+                    message_id=message.id,
+                    user_id=user_id,
+                )
+            )
+        db.commit()
+        return unread_messages
     except Exception:
         db.rollback()
         raise
