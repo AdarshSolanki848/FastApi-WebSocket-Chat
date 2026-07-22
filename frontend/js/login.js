@@ -5,6 +5,7 @@ const message=document.getElementById("message");
 const loginBtn=document.getElementById("loginBtn");
 const togglePassword=document.getElementById("togglePassword");
 
+
 LoginForm.addEventListener("submit",async(event)=>{
     event.preventDefault();
     const username=usernameInput.value.trim();
@@ -24,7 +25,7 @@ LoginForm.addEventListener("submit",async(event)=>{
             message.textContent=data.detail;
             return;
         }
-        localStorage.setItem("token",data.access_token);
+        localStorage.setItem(TOKEN_KEY,data.access_token);
         message.textContent="Sign In Successfully! Redirecting...";
         setTimeout(()=>{
             window.location.href="chat.html";

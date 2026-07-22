@@ -118,6 +118,38 @@ def get_user_conversations(db:Session, user_id:int):
     )
     return db.scalars(query).all()
 
+def get_user_conversations_list(db:Session, user_id:int):
+    conversations=get_user_conversations(db,user_id)
+    result=[]
+    for conversation in conversations:
+        if conversation.type == ConversationType.GROUP:
+            display_name = conversation.name
+        else:
+            other_member=None
+            for member in conversation.members:
+                if member.user_id!=user_id:
+                    other_member=member
+                    break
+            display_name=other_member.user.username
+        last_message=get_last_message(db,conversation.id)
+        if last_message:
+            last_message_content=last_message.content
+            last_message_time=last_message.created_at
+        else:
+            last_message_content=None
+            last_message_time=None
+        unread_count=get_unread_message_count(db,conversation.id,user_id)
+        result.append({
+            "id": conversation.id,
+            "type": conversation.type,
+            "display_name": display_name,
+            "avatar":display_name[0],
+            "last_message": last_message_content,
+            "last_message_time": last_message_time,
+            "unread_count": unread_count 
+        })
+    return result
+
 def create_group_conversation(db:Session,creator_id:int,name:str,member_ids:list[int]):
     name=name.strip()
     member_ids=list(set(member_ids))
@@ -398,19 +430,7 @@ def mark_conversation_read(db:Session,conversation_id:int,user_id:int):
         raise ValueError(f"User {user_id} does not exist.")
     if not is_member(db,conversation_id,user_id):
         raise ValueError(f"User {user_id} is not a member of conversation.")
-    unread_messages=db.scalars(
-        select(Message)
-        .where(
-            Message.conversation_id==conversation_id,
-            Message.sender_id!=user_id,
-            ~exists()
-            .where(
-                MessageRead.message_id==Message.id,
-                MessageRead.user_id==user_id
-            )
-        )
-
-    ).all()
+    unread_messages=get_unread_message(db,conversation_id,user_id)    
     try:
         for message in unread_messages:
             db.add(
@@ -424,3 +444,41 @@ def mark_conversation_read(db:Session,conversation_id:int,user_id:int):
     except Exception:
         db.rollback()
         raise
+
+def get_unread_message(db:Session,conversation_id:int,user_id:int):
+    return db.scalars(
+        select(Message)
+        .where(
+            Message.conversation_id==conversation_id,
+            Message.sender_id!=user_id,
+            ~exists()
+            .where(
+                MessageRead.message_id==Message.id,
+                MessageRead.user_id==user_id
+            )
+        )
+    ).all()
+
+def get_unread_message_count(db:Session,conversation_id:int,user_id:int):
+    return db.scalar(
+            select(func.count())
+            .select_from(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.sender_id != user_id,
+                ~exists().where(
+                    MessageRead.message_id == Message.id,
+                    MessageRead.user_id == user_id
+                )
+            )
+        )
+
+def get_last_message(db:Session,conversation_id:int):
+    return db.scalar(
+        select(Message)
+        .where(
+            Message.conversation_id == conversation_id
+        )
+        .order_by(Message.created_at.desc())
+        .limit(1)
+    )   

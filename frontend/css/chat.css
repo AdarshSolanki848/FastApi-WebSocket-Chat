@@ -198,6 +198,7 @@ body{
 }
 .conversation-item.active{
     background-color: var(--primary-light);
+    transform:scale(.98);
 }
 
 .conversation-avatar{
@@ -236,19 +237,42 @@ body{
 
 .conversation-bottom{
     margin-top:4px;
+    display: flex;
 }
 
+
 .last-message{
+    flex:1;
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
     color:var(--text-secondary);
     font-size: 14px;
+    overflow:hidden;
 }
 
-.conversation-item:active{
-    transform:scale(.98);
+.unread-badge{
+    min-width:20px;
+    height:20px;
+    width:20px;
+    padding:0 6px;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    border-radius:50%;
+
+    background:var(--primary);
+    color:white;
+
+    font-size:12px;
+    font-weight:600;
+
+    flex-shrink:0;
 }
+
+
 
 #new-conversation-btn{
     position:absolute;

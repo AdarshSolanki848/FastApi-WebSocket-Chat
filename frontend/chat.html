@@ -13,7 +13,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <div class="user-info">
-                <div class="user-avatar">U</div>
+                <div class="user-avatar" id="user-avatar">U</div>
                 <div class="user-details">
                     <h3 id="username">Username</h3>
                     <p id="status">Online</p>
@@ -28,7 +28,7 @@
         <div class="search-container">
             <input type="text" id="conversation-search" placeholder="Search conversations...">
         </div>
-        <div class="conversation-list">
+        <div class="conversation-list" id="conversation-list">
             <div class="conversation-item">
                 <div class="conversation-avatar">
                     A
@@ -73,7 +73,7 @@
                 </button>
             </div>
         </div>
-        <div class="messages-container">
+        <div class="messages-container" id="messages-container">
             <div class="empty-chat">
                 <div class="empty-chat-icon">
                     💬
@@ -116,6 +116,9 @@
         </div>
     </div>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/chat.js"></script>
     <script>
         lucide.createIcons();
     </script>

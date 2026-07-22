@@ -2,9 +2,10 @@ from fastapi import APIRouter, HTTPException,Depends
 import auth
 import crud
 from database import SessionLocal
-from schemas import RegisterRequest,TokenResponse
+from schemas import RegisterRequest,TokenResponse,UserResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from models import User
 
 router=APIRouter(prefix="/auth",tags=["Authentication"])
 
@@ -46,5 +47,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),db:Session=Depends(au
         "access_token":token,
         "token_type":"bearer"
     }
-    
+
+@router.get("/me",response_model=UserResponse)
+def read_current_user(current_user:User=Depends(auth.get_current_user)):
+    return current_user
         

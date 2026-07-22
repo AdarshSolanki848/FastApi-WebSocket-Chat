@@ -54,3 +54,18 @@ class ConversationMemberResponse(BaseModel):
     role: MemberRole
 
     model_config = ConfigDict(from_attributes=True)
+
+class UserResponse(BaseModel):
+    id:int
+    username:str
+    model_config = ConfigDict(from_attributes=True)
+
+class ConversationListItem(BaseModel):
+    id: int
+    type: ConversationType
+    display_name: str
+    avatar: str
+    last_message: str | None
+    last_message_time: datetime | None
+    unread_count: int
+    model_config = ConfigDict(from_attributes=True)

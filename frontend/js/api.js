@@ -1,7 +1,6 @@
-const BASE_URL = "http://127.0.0.1:8000";
 
 async function register(username,password) {
-    const response=await fetch(`${BASE_URL}/auth/register`,{
+    const response=await fetch(`${API_BASE}/auth/register`,{
         method:"POST",
         headers:{
             "Content-Type":"application/json"
@@ -15,14 +14,33 @@ async function register(username,password) {
 }
 
 async function login(username,password) {
-    const response=await fetch(`${BASE_URL}/auth/login`,{
+    const formData= new URLSearchParams();
+    formData.append("username",username);
+    formData.append("password",password);
+    const response=await fetch(`${API_BASE}/auth/login`,{
         method:"POST",
         headers:{
-            "Content-Type":"application/json"
+            "Content-Type":"application/x-www-form-urlencoded"
         },
-        body: JSON.stringify({
-            username,password
-        })
+        body: formData
     });
     return response;
+}
+
+async function getCurrentUser(token) {
+    const response=await fetch(`${API_BASE}/auth/me`,{
+        method:"GET",
+        headers:{
+            "Authorization":`Bearer ${token}`
+        }
+    });
+    return response;
+}
+async function getUserConversations(token) {
+    return await fetch(`${API_BASE}/conversations`,{
+        method:"GET",
+        headers:{
+            "Authorization":`Bearer ${token}`
+        }
+    });
 }

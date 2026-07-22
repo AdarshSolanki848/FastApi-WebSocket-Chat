@@ -2,7 +2,7 @@ from fastapi import APIRouter, WebSocket,WebSocketDisconnect
 from connection_manager import ConnectionManager
 from auth import verify_access_token
 import json
-from handlers import(
+from websocket.handlers import(
     handle_mark_read,
     handle_send_message,
     handle_stop_typing,

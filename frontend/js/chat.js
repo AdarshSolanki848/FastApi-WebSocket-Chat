@@ -1,166 +1,100 @@
-// import { getCurrentUser,getToken } from "./auth.js";
-// const token=localStorage.getItem("token");
-// if(!token){
-//     window.location.href="login.html";
-// }
 
-// const socket=new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`)
+let token = null;
+let currentUser = null;
+let conversations = [];
+let currentConversation = null;
+let websocket = null;
+const conversationList=document.getElementById("conversation-list");
+const messagesContainer=document.getElementById("messages-container");
+const messageInput=document.getElementById("message-input");
+const sendButton=document.getElementById("send-btn");
+const logoutButton=document.getElementById("logout-btn");
+const searchInput=document.getElementById("search-input");
+const newConversationButton=document.getElementById("new-conversation-btn");
+const username=document.getElementById("username");
+const userAvatar=document.getElementById("user-avatar");
 
-// const messageInput=document.getElementById("messageInput");
-// const usernameInput=document.getElementById("username")
-// const sendBtn=document.getElementById("sendBtn");
-// const messages=document.getElementById("messages");
-// const onlineCount=document.getElementById("onlineCount");
-// const typingIndicator=document.getElementById("typingIndicator")
-// const typingText=document.getElementById("typingText");
-// const loginUsername=document.getElementById("loginUsername");
-// let username=getCurrentUser();
-// let isTyping=false;
-// let typingTimeout=null;
-// const typingUsers=new Set();
+document.addEventListener("DOMContentLoaded", initialize);
+logoutButton.addEventListener("click",logout);
+async function initialize() {
+    token=localStorage.getItem(TOKEN_KEY);
+    if(!token){
+        window.location.href = "login.html";
+        return;
+    }
+    const response=await getCurrentUser(token);
+    if(!response.ok){
+        localStorage.removeItem(TOKEN_KEY);
+        window.location.href="login.html";
+        return;
+    }
+    currentUser=await response.json();
+    username.textContent=currentUser.username;
+    userAvatar.textContent=currentUser.username[0].toUpperCase();
+    // console.log(currentUser);
+    const conversationResponse=await getUserConversations(token);
+    if(!response.ok){
+        alert("Failed to load conversations.")
+        return;
+    }
+    conversations=await conversationResponse.json();
+    console.log(conversations);
+    renderConversationList();
+}
 
+function logout(){
+    localStorage.removeItem(TOKEN_KEY);
+    setTimeout(()=>{
+        window.location.href="login.html";
+    },1500);
+}
 
-// loginUsername.textContent=username;
-// socket.onopen=()=>{
-//     console.log("Connected!");
-// };
+function renderConversationList(){
+    conversationList.innerHTML="";
+    conversations.forEach(conversation=>{
+        const element=createConversationElement(conversation);
+        conversationList.append(element);
+    });
+}
+function createConversationElement(conversation){
+    const item=document.createElement("div");
+    const avatar=document.createElement("div");
+    const info=document.createElement("div");
+    const top=document.createElement("div");
+    const bottom=document.createElement("div");
+    const name=document.createElement("h3");
+    const time=document.createElement("span");
+    const lastMessage=document.createElement("p");
+    const unreadBadge = document.createElement("span");
+    item.className="conversation-item";
+    avatar.className="conversation-avatar";
+    info.className="conversation-info";
+    top.className="conversation-top";
+    bottom.className="conversation-bottom";
+    name.className="conversation-name";
+    time.className="conversation-time";
+    lastMessage.className="last-message";
+    unreadBadge.className = "unread-badge";
+    item.dataset.conversationId=conversation.id;
+    item.dataset.type=conversation.type;
+    avatar.textContent=conversation.avatar;
+    name.textContent=conversation.display_name;
+    time.textContent=conversation.last_message_time??"...";
+    lastMessage.textContent=conversation.last_message??"No message yet";
 
-// sendBtn.addEventListener('click',()=>{
-//     const Message=messageInput.value.trim();
-//     if(Message==="")return;
-//     const data={
-//         type:"chat",
-//         message:Message
-//     };
+    bottom.appendChild(lastMessage);
+    top.appendChild(name);
+    top.appendChild(time);
+    info.append(top);
+    info.append(bottom);
+    item.appendChild(avatar);
+    item.appendChild(info);
+    if (conversation.unread_count > 0) {
+        unreadBadge.textContent = conversation.unread_count;
+        bottom.appendChild(unreadBadge);
+    }
+    return item;
+}
 
-//     socket.send(JSON.stringify(data));
-//     messageInput.value="";
-// });
-
-// messageInput.addEventListener("input",()=>{
-//     if(!isTyping){
-//         isTyping=true;
-//         socket.send(JSON.stringify({type:"typing"}));
-//     }
-//     clearTimeout(typingTimeout);
-//     typingTimeout=setTimeout(()=>{
-//         isTyping=false;
-//         socket.send(JSON.stringify({type:"stopped_typing"}));
-//     },2000);
-
-// });
-
-
-// socket.onmessage=(event)=>{
-//     const data=JSON.parse(event.data)
-//     switch(data.type){
-//         case "chat":{
-//             addMessage(data);
-//             break;
-//         }
-//         case "user_joined":{
-//             userJoinedMessage(data);
-//             break;
-//         }
-//         case "online_count":{
-//             updateOnlineCount(data);
-//             break;
-//         }
-//         case "user_left":{
-//             userLeftMessage(data);
-//             break;
-//         }
-//         case "join_failed":{
-//             joinFailed(data);
-//             break;
-//         }
-//         case "typing":{
-//             addTypingUser(data);
-//             break;
-//         }
-//         case "stopped_typing":{
-//             removeTypingUser(data);
-//             break;
-//         }
-//         default:
-//             console.warn("Unknown message type:", data.type);      
-//     }
-// };
-
-
-// function addMessage(data){
-//     const div=document.createElement("div");
-//     div.className="message";
-//     div.textContent=`${data.username}: ${data.message}`;
-//     if(username===data.username)div.classList.add("mine");
-    
-//     messages.appendChild(div);
-//     messages.scrollTop = messages.scrollHeight;
-// }
-
-// function userJoinedMessage(data){
-//     const user_joined=document.createElement("div");
-//     const user_joined_container=document.createElement("div");
-//     user_joined.className="user-joined";
-//     user_joined_container.className="user-joined-container";
-//     user_joined.textContent=`${data.username} has joined`;
-//     user_joined_container.appendChild(user_joined);
-//     messages.appendChild(user_joined_container);
-//     messages.scrollTop = messages.scrollHeight;
-// }
-// function userLeftMessage(data){
-//     if(data.username===username)return;
-//     typingUsers.delete(data.username);
-//     updateTypingIndicator();
-//     const user_left=document.createElement("div");
-//     const user_left_container=document.createElement("div");
-//     user_left.className="user-left";
-//     user_left_container.className="user-left-container";
-//     user_left.textContent=`${data.username} has left`;
-//     user_left_container.appendChild(user_left);
-//     messages.appendChild(user_left_container);
-//     messages.scrollTop = messages.scrollHeight;
-// }
-
-// function updateOnlineCount(data){
-//     onlineCount.textContent=`🟢 ${data.count} Online`;
-// }
-
-
-
-// function addTypingUser(data){
-//     if(data.username==username)return;
-//     typingUsers.add(data.username);
-//     updateTypingIndicator();
-// }
-
-// function removeTypingUser(data){
-    
-//     if(data.username==username)return;
-//     typingUsers.delete(data.username);
-//     updateTypingIndicator();
-// }
-
-// function updateTypingIndicator(){
-//     const users=[...typingUsers];
-//     if(users.length===0){
-//         typingText.textContent="";
-//         typingIndicator.classList.add("hidden");
-//         return;
-//     }
-//     typingIndicator.classList.remove("hidden");
-//     switch(users.length){
-//         case 1:{
-//             typingText.textContent=`${users[0]} is typing`;
-//             break;
-//         }
-//         case 2:{
-//             typingText.textContent=`${users[0]} and ${users[1]} are typing`;
-//             break;
-//         }   
-//         default:
-//             typingText.textContent=`${users.length} users are typing`;
-//     }
-// }
 
 

@@ -12,10 +12,11 @@ from schemas import (
     CreateGroupConversationRequest,
     AddMemberRequest,
     MakeAdminRequest,
-    CreateMessageRequest
+    CreateMessageRequest,
+    ConversationListItem
 )
 
-router=APIRouter(prefix="/conversation",tags=["Conversation"])
+router=APIRouter(prefix="/conversations",tags=["Conversations"])
 
 @router.post("/private",response_model=ConversationResponse)
 def create_private_conversation(
@@ -59,12 +60,12 @@ def create_group_conversation(
             detail=str(e)
         )
 
-@router.get("",response_model=list[ConversationResponse])
+@router.get("",response_model=list[ConversationListItem])
 def get_user_conversations(
         db:Session=Depends(get_db),
         current_user:User=Depends(get_current_user)
     ):
-    conversations = crud.get_user_conversations(
+    conversations = crud.get_user_conversations_list(
         db,
         current_user.id
     )
