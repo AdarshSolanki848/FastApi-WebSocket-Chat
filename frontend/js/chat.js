@@ -1,166 +1,166 @@
-import { getCurrentUser,getToken } from "./auth.js";
-const token=localStorage.getItem("token");
-if(!token){
-    window.location.href="login.html";
-}
+// import { getCurrentUser,getToken } from "./auth.js";
+// const token=localStorage.getItem("token");
+// if(!token){
+//     window.location.href="login.html";
+// }
 
-const socket=new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`)
+// const socket=new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`)
 
-const messageInput=document.getElementById("messageInput");
-const usernameInput=document.getElementById("username")
-const sendBtn=document.getElementById("sendBtn");
-const messages=document.getElementById("messages");
-const onlineCount=document.getElementById("onlineCount");
-const typingIndicator=document.getElementById("typingIndicator")
-const typingText=document.getElementById("typingText");
-const loginUsername=document.getElementById("loginUsername");
-let username=getCurrentUser();
-let isTyping=false;
-let typingTimeout=null;
-const typingUsers=new Set();
-
-
-loginUsername.textContent=username;
-socket.onopen=()=>{
-    console.log("Connected!");
-};
-
-sendBtn.addEventListener('click',()=>{
-    const Message=messageInput.value.trim();
-    if(Message==="")return;
-    const data={
-        type:"chat",
-        message:Message
-    };
-
-    socket.send(JSON.stringify(data));
-    messageInput.value="";
-});
-
-messageInput.addEventListener("input",()=>{
-    if(!isTyping){
-        isTyping=true;
-        socket.send(JSON.stringify({type:"typing"}));
-    }
-    clearTimeout(typingTimeout);
-    typingTimeout=setTimeout(()=>{
-        isTyping=false;
-        socket.send(JSON.stringify({type:"stopped_typing"}));
-    },2000);
-
-});
+// const messageInput=document.getElementById("messageInput");
+// const usernameInput=document.getElementById("username")
+// const sendBtn=document.getElementById("sendBtn");
+// const messages=document.getElementById("messages");
+// const onlineCount=document.getElementById("onlineCount");
+// const typingIndicator=document.getElementById("typingIndicator")
+// const typingText=document.getElementById("typingText");
+// const loginUsername=document.getElementById("loginUsername");
+// let username=getCurrentUser();
+// let isTyping=false;
+// let typingTimeout=null;
+// const typingUsers=new Set();
 
 
-socket.onmessage=(event)=>{
-    const data=JSON.parse(event.data)
-    switch(data.type){
-        case "chat":{
-            addMessage(data);
-            break;
-        }
-        case "user_joined":{
-            userJoinedMessage(data);
-            break;
-        }
-        case "online_count":{
-            updateOnlineCount(data);
-            break;
-        }
-        case "user_left":{
-            userLeftMessage(data);
-            break;
-        }
-        case "join_failed":{
-            joinFailed(data);
-            break;
-        }
-        case "typing":{
-            addTypingUser(data);
-            break;
-        }
-        case "stopped_typing":{
-            removeTypingUser(data);
-            break;
-        }
-        default:
-            console.warn("Unknown message type:", data.type);      
-    }
-};
+// loginUsername.textContent=username;
+// socket.onopen=()=>{
+//     console.log("Connected!");
+// };
+
+// sendBtn.addEventListener('click',()=>{
+//     const Message=messageInput.value.trim();
+//     if(Message==="")return;
+//     const data={
+//         type:"chat",
+//         message:Message
+//     };
+
+//     socket.send(JSON.stringify(data));
+//     messageInput.value="";
+// });
+
+// messageInput.addEventListener("input",()=>{
+//     if(!isTyping){
+//         isTyping=true;
+//         socket.send(JSON.stringify({type:"typing"}));
+//     }
+//     clearTimeout(typingTimeout);
+//     typingTimeout=setTimeout(()=>{
+//         isTyping=false;
+//         socket.send(JSON.stringify({type:"stopped_typing"}));
+//     },2000);
+
+// });
 
 
-function addMessage(data){
-    const div=document.createElement("div");
-    div.className="message";
-    div.textContent=`${data.username}: ${data.message}`;
-    if(username===data.username)div.classList.add("mine");
+// socket.onmessage=(event)=>{
+//     const data=JSON.parse(event.data)
+//     switch(data.type){
+//         case "chat":{
+//             addMessage(data);
+//             break;
+//         }
+//         case "user_joined":{
+//             userJoinedMessage(data);
+//             break;
+//         }
+//         case "online_count":{
+//             updateOnlineCount(data);
+//             break;
+//         }
+//         case "user_left":{
+//             userLeftMessage(data);
+//             break;
+//         }
+//         case "join_failed":{
+//             joinFailed(data);
+//             break;
+//         }
+//         case "typing":{
+//             addTypingUser(data);
+//             break;
+//         }
+//         case "stopped_typing":{
+//             removeTypingUser(data);
+//             break;
+//         }
+//         default:
+//             console.warn("Unknown message type:", data.type);      
+//     }
+// };
+
+
+// function addMessage(data){
+//     const div=document.createElement("div");
+//     div.className="message";
+//     div.textContent=`${data.username}: ${data.message}`;
+//     if(username===data.username)div.classList.add("mine");
     
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-}
+//     messages.appendChild(div);
+//     messages.scrollTop = messages.scrollHeight;
+// }
 
-function userJoinedMessage(data){
-    const user_joined=document.createElement("div");
-    const user_joined_container=document.createElement("div");
-    user_joined.className="user-joined";
-    user_joined_container.className="user-joined-container";
-    user_joined.textContent=`${data.username} has joined`;
-    user_joined_container.appendChild(user_joined);
-    messages.appendChild(user_joined_container);
-    messages.scrollTop = messages.scrollHeight;
-}
-function userLeftMessage(data){
-    if(data.username===username)return;
-    typingUsers.delete(data.username);
-    updateTypingIndicator();
-    const user_left=document.createElement("div");
-    const user_left_container=document.createElement("div");
-    user_left.className="user-left";
-    user_left_container.className="user-left-container";
-    user_left.textContent=`${data.username} has left`;
-    user_left_container.appendChild(user_left);
-    messages.appendChild(user_left_container);
-    messages.scrollTop = messages.scrollHeight;
-}
+// function userJoinedMessage(data){
+//     const user_joined=document.createElement("div");
+//     const user_joined_container=document.createElement("div");
+//     user_joined.className="user-joined";
+//     user_joined_container.className="user-joined-container";
+//     user_joined.textContent=`${data.username} has joined`;
+//     user_joined_container.appendChild(user_joined);
+//     messages.appendChild(user_joined_container);
+//     messages.scrollTop = messages.scrollHeight;
+// }
+// function userLeftMessage(data){
+//     if(data.username===username)return;
+//     typingUsers.delete(data.username);
+//     updateTypingIndicator();
+//     const user_left=document.createElement("div");
+//     const user_left_container=document.createElement("div");
+//     user_left.className="user-left";
+//     user_left_container.className="user-left-container";
+//     user_left.textContent=`${data.username} has left`;
+//     user_left_container.appendChild(user_left);
+//     messages.appendChild(user_left_container);
+//     messages.scrollTop = messages.scrollHeight;
+// }
 
-function updateOnlineCount(data){
-    onlineCount.textContent=`🟢 ${data.count} Online`;
-}
+// function updateOnlineCount(data){
+//     onlineCount.textContent=`🟢 ${data.count} Online`;
+// }
 
 
 
-function addTypingUser(data){
-    if(data.username==username)return;
-    typingUsers.add(data.username);
-    updateTypingIndicator();
-}
+// function addTypingUser(data){
+//     if(data.username==username)return;
+//     typingUsers.add(data.username);
+//     updateTypingIndicator();
+// }
 
-function removeTypingUser(data){
+// function removeTypingUser(data){
     
-    if(data.username==username)return;
-    typingUsers.delete(data.username);
-    updateTypingIndicator();
-}
+//     if(data.username==username)return;
+//     typingUsers.delete(data.username);
+//     updateTypingIndicator();
+// }
 
-function updateTypingIndicator(){
-    const users=[...typingUsers];
-    if(users.length===0){
-        typingText.textContent="";
-        typingIndicator.classList.add("hidden");
-        return;
-    }
-    typingIndicator.classList.remove("hidden");
-    switch(users.length){
-        case 1:{
-            typingText.textContent=`${users[0]} is typing`;
-            break;
-        }
-        case 2:{
-            typingText.textContent=`${users[0]} and ${users[1]} are typing`;
-            break;
-        }   
-        default:
-            typingText.textContent=`${users.length} users are typing`;
-    }
-}
+// function updateTypingIndicator(){
+//     const users=[...typingUsers];
+//     if(users.length===0){
+//         typingText.textContent="";
+//         typingIndicator.classList.add("hidden");
+//         return;
+//     }
+//     typingIndicator.classList.remove("hidden");
+//     switch(users.length){
+//         case 1:{
+//             typingText.textContent=`${users[0]} is typing`;
+//             break;
+//         }
+//         case 2:{
+//             typingText.textContent=`${users[0]} and ${users[1]} are typing`;
+//             break;
+//         }   
+//         default:
+//             typingText.textContent=`${users.length} users are typing`;
+//     }
+// }
 
 
