@@ -38,13 +38,18 @@ class MakeAdminRequest(BaseModel):
 class CreateMessageRequest(BaseModel):
     content: str
 
+class ReadReceiptResponse(BaseModel):
+    user_id:int
+    username:str
+    read_at:datetime
+
 class MessageResponse(BaseModel):
     id: int
     content: str
     conversation_id: int
     sender_id: int
     created_at: datetime
-
+    read_by: list[ReadReceiptResponse]
     model_config = ConfigDict(from_attributes=True)
 
 class ConversationMemberResponse(BaseModel):

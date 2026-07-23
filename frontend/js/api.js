@@ -44,3 +44,11 @@ async function getUserConversations(token) {
         }
     });
 }
+async function getConversationMessages(token,conversationId) {
+    return await fetch(`${API_BASE}/conversations/${conversationId}/messages`,{
+        method:"GET",
+        headers:{
+            "Authorization":`Bearer ${token}`
+        }
+    });
+}

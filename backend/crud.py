@@ -5,10 +5,9 @@ from models import (
     Conversation,
     ConversationMember,
     Message,
-    MessageRead
+    MessageRead,
 )
 from enums import ConversationType, MemberRole
-
 
 #============================================
 # USER CRUD
@@ -87,7 +86,6 @@ def create_private_conversation(db:Session,user1_id:int,user2_id:int):
             user_id=user2_id,
             role=MemberRole.MEMBER
         )
-
         db.add_all([member1,member2])
         db.commit()
         db.refresh(conversation)
@@ -148,6 +146,10 @@ def get_user_conversations_list(db:Session, user_id:int):
             "last_message_time": last_message_time,
             "unread_count": unread_count 
         })
+        result.sort(
+            key=lambda conversation: conversation["last_message_time"],
+        reverse=True
+)
     return result
 
 def create_group_conversation(db:Session,creator_id:int,name:str,member_ids:list[int]):
@@ -180,7 +182,6 @@ def create_group_conversation(db:Session,creator_id:int,name:str,member_ids:list
                 role=MemberRole.ADMIN
             )
         ]
-        
         for member_id in member_ids:
             members.append(
                 ConversationMember(
@@ -251,7 +252,6 @@ def add_member(db:Session, conversation_id:int, requester_id:int, new_member_id:
             user_id=new_member_id,
             role=MemberRole.MEMBER
         )
-
         db.add(member)
         db.commit()
         db.refresh(member)
@@ -401,15 +401,16 @@ def get_message_by_id(db:Session,message_id:int):
         )
     )
 
-def get_conversation_messages(db:Session,conversation_id:int):
-    query=(
+def get_conversation_messages(db:Session,conversation_id:int,user_id:int):
+    messages=db.scalars(
         select(Message)
         .where(
             Message.conversation_id==conversation_id
         )
         .order_by(Message.created_at)
-    )
-    return db.scalars(query).all()
+    ).all()
+
+    return messages
 
 def delete_message(db:Session,message_id:int):
     message=get_message_by_id(db,message_id)
@@ -482,3 +483,11 @@ def get_last_message(db:Session,conversation_id:int):
         .order_by(Message.created_at.desc())
         .limit(1)
     )   
+
+def get_message_read_receipts(db:Session,message_id:int):
+    return db.scalars(
+        select(MessageRead)
+        .where(
+            MessageRead.message_id==message_id
+        )
+    ).all()

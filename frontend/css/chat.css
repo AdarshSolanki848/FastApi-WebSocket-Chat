@@ -439,6 +439,14 @@ body{
     margin:0;
 }
 
+.message-meta {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
 .message-time{
     display:block;
     margin-top:6px;
@@ -447,10 +455,24 @@ body{
     color: var(--text-muted);
 }
 
+.message-status{
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.message-status svg{
+    width: 14px;
+    height: 14px;
+}
+
+.message-status svg:first-child {
+    margin-right: -10px;   /* overlap to look like WhatsApp */
+}
+
 .message-row.outgoing .message-time{
     color:rgba(255,255,255,.75);
 }
-
 .message-input-container{
     background:var(--surface);
     border-top:1px solid var(--border);
@@ -549,6 +571,9 @@ button{
     padding:0;
 }
 
+.hidden{
+    display: none;
+}
 
 @media(max-width:1024px){
     .sidebar{

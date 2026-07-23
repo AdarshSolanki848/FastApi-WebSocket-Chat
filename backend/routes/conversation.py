@@ -13,7 +13,8 @@ from schemas import (
     AddMemberRequest,
     MakeAdminRequest,
     CreateMessageRequest,
-    ConversationListItem
+    ConversationListItem,
+    ReadReceiptResponse
 )
 
 router=APIRouter(prefix="/conversations",tags=["Conversations"])
@@ -112,11 +113,33 @@ def get_conversation_messages(conversation_id:int,
             status_code=403,
             detail="You are not a member of this conversation."
         )
-    return crud.get_conversation_messages(
+    messages=crud.get_conversation_messages(
         db,
-        conversation_id
+        conversation_id,
+        current_user.id
     )
+    response=[]
+    for message in messages:
+        receipts=crud.get_message_read_receipts(db,message.id)
+        response.append(
+            MessageResponse(
+                id=message.id,
+                conversation_id=message.conversation_id,
+                sender_id=message.sender_id,
+                content=message.content,
+                created_at=message.created_at,
+                read_by=[
+                    ReadReceiptResponse(
+                        user_id=receipt.user.id,
+                        username=receipt.user.username,
+                        read_at=receipt.read_at
+                    ) for receipt in receipts
+                ]
 
+            )
+        )
+    return response
+#jjnjfrn
 @router.post("/{conversation_id}/messages",response_model=MessageResponse)
 def create_messages(
         request:CreateMessageRequest,

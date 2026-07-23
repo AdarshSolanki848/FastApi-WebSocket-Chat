@@ -54,7 +54,7 @@
     <div class="chat-container">
         <div class="chat-header">
             <div class="chat-info">
-                <div class="chat-avatar">
+                <div class="chat-avatar" id="chat-avatar">
                     A
                 </div>
 
@@ -70,11 +70,10 @@
                 <button id="chat-menu-btn">
                     <i data-lucide="ellipsis-vertical"></i>
                 </button>
-                </button>
             </div>
         </div>
         <div class="messages-container" id="messages-container">
-            <div class="empty-chat">
+            <div class="empty-chat" id="empty-chat">
                 <div class="empty-chat-icon">
                     💬
                 </div>
@@ -109,7 +108,7 @@
         <div class="message-input-container">
             <div class="message-input-wrapper">
                 <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
-                <button id="send-message-btn">
+                <button type="button" id="send-message-btn">
                     <i data-lucide="send"></i>
                 </button>
             </div>

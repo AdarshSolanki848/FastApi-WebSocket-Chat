@@ -1,9 +1,9 @@
 export function getToken(){
-    return localStorage.getItem("token");
+    return sessionStorage.getItem("token");
 }
 
 export function logout() {
-    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     window.location.href = "login.html";
 }
 
