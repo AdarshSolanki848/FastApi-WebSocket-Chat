@@ -104,3 +104,4 @@ async def handle_mark_read(websocket:WebSocket,manager:ConnectionManager,data:di
             await manager.send_to_user(member.user_id,payload)
     finally:
         db.close()
+

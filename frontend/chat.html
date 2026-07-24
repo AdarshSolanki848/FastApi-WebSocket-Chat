@@ -29,22 +29,6 @@
             <input type="text" id="conversation-search" placeholder="Search conversations...">
         </div>
         <div class="conversation-list" id="conversation-list">
-            <div class="conversation-item">
-                <div class="conversation-avatar">
-                    A
-                </div>
-                <div class="conversation-info">
-                    <div class="conversation-top">
-                        <h3 class="conversation-name">Alice</h3>
-                        <span class="conversation-time">10:42 AM</span>
-                    </div>
-                    <div class="conversation-bottom">
-                        <p class="last-message">
-                            Hey! Are we meeting tomorrow?
-                        </p>
-                    </div>
-                </div>
-            </div>
         </div>
         <button id="new-conversation-btn">
             <i data-lucide="plus"></i>
@@ -67,7 +51,7 @@
                 <button id="add-member-btn">
                     <i data-lucide="user-plus"></i>
                 </button>
-                <button id="chat-menu-btn">
+                <button type="button" id="chat-menu-btn">
                     <i data-lucide="ellipsis-vertical"></i>
                 </button>
             </div>
@@ -83,33 +67,65 @@
                     or create a new one.
                 </p>
             </div>
-            <!-- <div class="message-row incoming">
-                <div class="message-bubble">
-                    <p class="message-content">
-                        Hey! How are you?
-                    </p>
-                    <span class="message-time">
-                        10:35 AM
-                    </span>
-                </div>
-            </div>
-            <div class="message-row outgoing">
-                <div class="message-bubble">
-                    <p class="message-content">
-                        I'm doing great! How about you?
-                    </p>
-                    <span class="message-time">
-                        10:36 AM
-                    </span>
-                </div>
-            </div> -->
         </div>
-
         <div class="message-input-container">
             <div class="message-input-wrapper">
                 <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
                 <button type="button" id="send-message-btn">
                     <i data-lucide="send"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-menu" class="chat-menu hidden">
+        <button id="group-info-option"><i data-lucide="users"></i></i>Group Info</button>
+        <button id="rename-group-option"><i data-lucide="pencil"></i>Rename Group</button>
+        <button id="add-member-option"><i data-lucide="user-plus"></i>Add Member</button>
+        <button id="leave-group-option" class="danger"><i data-lucide="log-out"></i>Leave Group</button>
+        <button id="delete-conversation-option" class="danger"><i data-lucide="trash-2"></i>Delete Conversation</button>
+    </div>
+
+    <div id="new-conversation-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>New Conversation</h2>
+            <div class="conversation-type">
+                <label>
+                    <input
+                        type="radio"
+                        name="conversation-type"
+                        value="private"
+                        checked
+                    >
+                    Private Chat
+                </label>
+                <label>
+                    <input
+                        type="radio"
+                        name="conversation-type"
+                        value="group"
+                    >
+                    Group Chat
+                </label>
+            </div>
+            <div id="group-name-container" class="hidden">
+                <input
+                    id="group-name"
+                    placeholder="Group Name"
+                >
+            </div>
+            <input
+                id="user-search"
+                placeholder="Search user..."
+            >
+            <div id="users-list"></div>
+            
+            <div class="modal-actions">
+                <button id="cancel-new-chat-btn">
+                    Cancel
+                </button>
+                <button id="create-conversation-btn" disabled>
+                    Create
                 </button>
             </div>
         </div>

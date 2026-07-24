@@ -73,4 +73,5 @@ class ConversationListItem(BaseModel):
     last_message: str | None
     last_message_time: datetime | None
     unread_count: int
+    created_at:datetime
     model_config = ConfigDict(from_attributes=True)

@@ -35,9 +35,43 @@ def get_user_by_id(db:Session,user_id:int):
     )
     return db.scalar(query)
 
+def get_all_other_users(db: Session,user_id:int):
+    return db.scalars(
+        select(User)
+        .where(User.id !=user_id)
+        .order_by(User.username)
+    ).all()
 #============================================
 # CONVERSATION CRUD
 #============================================
+def build_conversation_list_item(db:Session,conversation:Conversation,user_id:int):
+    if conversation.type == ConversationType.GROUP:
+        display_name = conversation.name
+    else:
+        other_member=None
+        for member in conversation.members:
+            if member.user_id!=user_id:
+                other_member=member
+                break
+        display_name=other_member.user.username
+    last_message=get_last_message(db,conversation.id)
+    if last_message:
+        last_message_content=last_message.content
+        last_message_time=last_message.created_at.isoformat()
+    else:
+        last_message_content=None
+        last_message_time=None
+    unread_count=get_unread_message_count(db,conversation.id,user_id)
+    return {
+            "id": conversation.id,
+            "type": conversation.type,
+            "display_name": display_name,
+            "avatar":display_name[0],
+            "last_message": last_message_content,
+            "last_message_time": last_message_time,
+            "unread_count": unread_count,
+            "created_at":conversation.created_at.isoformat()
+        }
 
 def get_private_conversation(db:Session,user1_id:int,user2_id:int):
     cm1=aliased(ConversationMember)
@@ -68,31 +102,30 @@ def create_private_conversation(db:Session,user1_id:int,user2_id:int):
         raise ValueError(f"A user {user2_id} does not exist.")
     
     conversation=get_private_conversation(db,user1_id,user2_id)
-    if conversation:
-        return conversation
-    try:
-        conversation=Conversation(type=ConversationType.PRIVATE)
+    if not conversation:
+        try:
+            conversation=Conversation(type=ConversationType.PRIVATE)
 
-        db.add(conversation)
-        db.flush()
+            db.add(conversation)
+            db.flush()
 
-        member1=ConversationMember(
-            conversation_id=conversation.id,
-            user_id=user1_id,
-            role=MemberRole.MEMBER
-        )
-        member2=ConversationMember(
-            conversation_id=conversation.id,
-            user_id=user2_id,
-            role=MemberRole.MEMBER
-        )
-        db.add_all([member1,member2])
-        db.commit()
-        db.refresh(conversation)
-        return conversation
-    except Exception:
-        db.rollback()
-        raise
+            member1=ConversationMember(
+                conversation_id=conversation.id,
+                user_id=user1_id,
+                role=MemberRole.MEMBER
+            )
+            member2=ConversationMember(
+                conversation_id=conversation.id,
+                user_id=user2_id,
+                role=MemberRole.MEMBER
+            )
+            db.add_all([member1,member2])
+            db.commit()
+            db.refresh(conversation)
+        except Exception:
+            db.rollback()
+            raise
+    return (conversation,build_conversation_list_item(db,conversation,user1_id))
     
 def get_conversation_by_id(db: Session,conversation_id: int):
     query = (
@@ -118,38 +151,13 @@ def get_user_conversations(db:Session, user_id:int):
 
 def get_user_conversations_list(db:Session, user_id:int):
     conversations=get_user_conversations(db,user_id)
-    result=[]
-    for conversation in conversations:
-        if conversation.type == ConversationType.GROUP:
-            display_name = conversation.name
-        else:
-            other_member=None
-            for member in conversation.members:
-                if member.user_id!=user_id:
-                    other_member=member
-                    break
-            display_name=other_member.user.username
-        last_message=get_last_message(db,conversation.id)
-        if last_message:
-            last_message_content=last_message.content
-            last_message_time=last_message.created_at
-        else:
-            last_message_content=None
-            last_message_time=None
-        unread_count=get_unread_message_count(db,conversation.id,user_id)
-        result.append({
-            "id": conversation.id,
-            "type": conversation.type,
-            "display_name": display_name,
-            "avatar":display_name[0],
-            "last_message": last_message_content,
-            "last_message_time": last_message_time,
-            "unread_count": unread_count 
-        })
-        result.sort(
-            key=lambda conversation: conversation["last_message_time"],
+    result=[build_conversation_list_item(db,conversation,user_id) for conversation in conversations]
+    result.sort(
+        key=lambda c:(
+        c["last_message_time"] or c["created_at"]
+    ),
         reverse=True
-)
+    )
     return result
 
 def create_group_conversation(db:Session,creator_id:int,name:str,member_ids:list[int]):
@@ -193,11 +201,28 @@ def create_group_conversation(db:Session,creator_id:int,name:str,member_ids:list
         db.add_all(members)
         db.commit()
         db.refresh(conversation)
-        return conversation
+        return (conversation,build_conversation_list_item(db,conversation,creator_id))
     except Exception:
         db.rollback()
         raise
 
+def delete_conversation(db:Session,conversation_id:int,requester_id:int):
+    conversation=get_conversation_by_id(db,conversation_id)
+    if not conversation:
+        raise ValueError("Conversation does not exist.")
+    if not is_member(db,conversation_id,requester_id):
+        raise ValueError("Requester is not a member of conversation.")
+
+    if(conversation.type==ConversationType.GROUP and not is_admin(db,conversation_id,requester_id)):
+        raise ValueError("Only admin can delete a group.")
+    try:
+        db.delete(conversation)
+        db.commit()
+        return conversation
+    except Exception:
+        db.rollback()
+        raise
+    
 #============================================
 # CONVERSATION-MEMBER CRUD
 #============================================

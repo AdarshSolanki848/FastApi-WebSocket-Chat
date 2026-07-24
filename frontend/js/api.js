@@ -52,3 +52,47 @@ async function getConversationMessages(token,conversationId) {
         }
     });
 }
+
+async function deleteConversation(token,conversationId){
+    return await fetch(`${API_BASE}/conversations/${conversationId}`,{
+        method:"DELETE",
+        headers:{
+            "Authorization": `Bearer ${token}`
+        }
+    });
+}
+
+async function getUsers(token) {
+    return await fetch(`${API_BASE}/users`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+}
+
+async function createPrivateConversation(token, userId) {
+    return fetch(`${API_BASE}/conversations/private`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            user_id: userId
+        })
+    });
+}
+
+async function createGroupConversation(token, name, memberIds) {
+    return fetch(`${API_BASE}/conversations/group`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            name,
+            member_ids: memberIds
+        })
+    });
+}

@@ -4,6 +4,7 @@ import crud
 from database import SessionLocal
 from auth import get_current_user,get_db
 from models import User
+from websocket.chat import manager
 from schemas import (
     ConversationResponse,
     MessageResponse,
@@ -19,19 +20,22 @@ from schemas import (
 
 router=APIRouter(prefix="/conversations",tags=["Conversations"])
 
-@router.post("/private",response_model=ConversationResponse)
-def create_private_conversation(
+@router.post("/private",response_model=ConversationListItem)
+async def create_private_conversation(
         request:CreatePrivateConversationRequest, 
         db:Session=Depends(get_db), 
         current_user:User=Depends(get_current_user)
     ):
     try:
-        conversation = crud.create_private_conversation(
-            db,
-            current_user.id,
-            request.user_id
-        )
-        return conversation
+        conversation, response=crud.create_private_conversation(db,current_user.id,request.user_id)
+        members = crud.get_conversation_members(db, conversation.id)
+        for member in members:
+            payload = {
+                "type": "conversation_created",
+                "conversation": crud.build_conversation_list_item(db,conversation,member.user_id)
+            }
+            await manager.send_to_user(member.user_id,payload)
+        return response
 
     except ValueError as e:
         raise HTTPException(
@@ -39,21 +43,28 @@ def create_private_conversation(
             detail=str(e)
         )
 
-@router.post("/group",response_model=ConversationResponse)
-def create_group_conversation(
+@router.post("/group",response_model=ConversationListItem)
+async def create_group_conversation(
         request:CreateGroupConversationRequest,
         db:Session=Depends(get_db),
         current_user:User=Depends(get_current_user)
     ):
     
     try:
-        conversation = crud.create_group_conversation(
+        conversation,response= crud.create_group_conversation(
             db,
             current_user.id,
             request.name,
             request.member_ids
         )
-        return conversation
+        members = crud.get_conversation_members(db, conversation.id)
+        for member in members:
+            payload = {
+                "type": "conversation_created",
+                "conversation": crud.build_conversation_list_item(db,conversation,member.user_id)
+            }
+            await manager.send_to_user(member.user_id,payload)
+        return response
 
     except ValueError as e:
         raise HTTPException(
@@ -93,6 +104,34 @@ def get_conversation(conversation_id:int,
             detail="You are not a member of this conversation."
         )
     return conversation
+
+@router.delete("/{conversation_id}",response_model=ConversationResponse)
+async def delete_conversation(
+        conversation_id:int,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)):
+    conversation=crud.get_conversation_by_id(db,conversation_id)
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation does not exist."
+        )
+
+    members = crud.get_conversation_members(db, conversation_id)
+    try:
+        crud.delete_conversation(db,conversation_id,current_user.id)
+        payload={
+            "type": "conversation_deleted",
+            "conversation_id": conversation_id
+        }
+        for member in members:
+            await manager.send_to_user(member.user_id,payload)
+        return conversation
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
 
 @router.get("/{conversation_id}/messages",response_model=list[MessageResponse])
 def get_conversation_messages(conversation_id:int,
