@@ -12,6 +12,10 @@ let filteredUsers = [];
 let selectedUserId = null;
 let selectedUserIds = new Set();
 
+let availableUsers = [];
+let filteredAvailableUsers = [];
+let selectedMembersIds = new Set();
+
 const conversationList=document.getElementById("conversation-list");
 const messagesContainer=document.getElementById("messages-container");
 const messageInput=document.getElementById("message-input");
@@ -27,7 +31,6 @@ const emptyChat=document.getElementById("empty-chat");
 const chatMenuButton=document.getElementById("chat-menu-btn");
 const chatMenu=document.getElementById("chat-menu");
 const deleteConversationButton=document.getElementById("delete-conversation-option");
-
 const newConversationButton=document.getElementById("new-conversation-btn");
 const newConversationModal=document.getElementById("new-conversation-modal");
 const cancelNewChatButton = document.getElementById("cancel-new-chat-btn");
@@ -38,6 +41,12 @@ const groupNameContainer = document.getElementById("group-name-container");
 const groupNameInput = document.getElementById("group-name");
 const createConversationButton = document.getElementById("create-conversation-btn");
 
+const addMembersButton=document.getElementById("add-member-btn");
+const addMembersModal=document.getElementById("add-members-modal");
+const memberSearch=document.getElementById("member-search");
+const availableUsersList=document.getElementById("available-users-list");
+const cancelAddMembersButton = document.getElementById("cancel-add-members-btn");
+const confirmAddMembersButton = document.getElementById("confirm-add-members-btn");
 
 document.addEventListener("DOMContentLoaded", initialize);
 logoutButton.addEventListener("click",logout);
@@ -64,11 +73,16 @@ document.addEventListener("click", (event) => {
         chatMenu.classList.add("hidden");
     }
 });
-
 newConversationButton.addEventListener("click",openNewConversationModal);
 cancelNewChatButton.addEventListener("click", closeNewConversationModal);
 createConversationButton.addEventListener("click", createConversation);
 groupNameInput.addEventListener("input",updateCreateButton);
+
+
+
+addMembersButton.addEventListener("click", openAddMembersModal);
+cancelAddMembersButton.addEventListener("click", closeAddMembersModal);
+confirmAddMembersButton.addEventListener("click",addNewMembers);
 
 function connectWebSocket() {
     websocket = new WebSocket(
@@ -108,6 +122,9 @@ function handleSocketMessage(event) {
             break;
         case "conversation_created":
             handleConversationCreated(data);
+            break;
+        case "members_added":
+            handleMembersAdded(data);
             break;
         case "error":
             alert(data.message);
@@ -226,6 +243,12 @@ function handleConversationCreated(data){
 
 }
 
+function handleMembersAdded(data) {
+    if (!currentConversation) return;
+    if (currentConversation.id !== data.conversation_id)
+        return;
+}
+
 async function initialize() {
     // debugger;
     token=sessionStorage.getItem(TOKEN_KEY);
@@ -265,6 +288,7 @@ function logout(){
         window.location.href="login.html";
     },1500);
 }
+
 async function loadConversations(){
     const conversationResponse=await getUserConversations(token);
     if(!conversationResponse.ok){
@@ -329,6 +353,9 @@ function createConversationElement(conversation){
 async function openConversation(conversation){
     currentConversation=conversation;
     conversation.unread_count = 0;
+    if(currentConversation.type==="private")addMembersButton.classList.add("hidden");
+    else addMembersButton.classList.remove("hidden");
+    chatMenuButton.classList.remove("hidden");
     renderConversationList();
     setActiveConversation(conversation.id);
     updateChatHeader(conversation);
@@ -587,8 +614,8 @@ async function openNewConversationModal() {
 
 function closeNewConversationModal() {
     newConversationModal.classList.add("hidden");
-    selectedUser = null;
-    selectedUsers = [];
+    selectedUserId = null;
+    selectedUsersIds.clear();
     groupNameInput.value = "";
     userSearch.value = "";
     document.querySelector('input[value="private"]').checked = true;
@@ -696,4 +723,73 @@ async function createConversation() {
         console.error(error);
         alert("Failed to create conversation.");
     }
+}
+
+async function openAddMembersModal(){
+    if(!currentConversation || currentConversation.type==="private")return;
+    const response=await getAvailableUsers(token,currentConversation.id);
+    if(!response.ok){
+        alert("Failed to load users.");
+        return;
+    }
+    
+    availableUsers=await response.json();
+    filteredAvailableUsers=[...availableUsers];
+    selectedMembersIds.clear();
+    memberSearch.value = "";
+    renderAvailableUsers();
+    updateAddMembersButton();
+    addMembersModal.classList.remove("hidden");
+}
+function closeAddMembersModal(){
+    addMembersModal.classList.add("hidden");
+    availableUsers=[];
+    selectedMembersIds.clear();
+    memberSearch.value="";
+    updateAddMembersButton();
+}
+
+function renderAvailableUsers(){
+    availableUsersList.innerHTML="";
+    filteredAvailableUsers.forEach(user=>{
+        const div=document.createElement("div");
+        div.className = "user-item";
+        div.textContent = user.username;
+        if (selectedMembersIds.has(user.id))div.classList.add("selected");
+        div.addEventListener("click", () => {
+            selectMember(user);
+        });
+        availableUsersList.appendChild(div);
+    });
+}
+
+function selectMember(user) {
+    if(selectedMembersIds.has(user.id))selectedMembersIds.delete(user.id);
+    else selectedMembersIds.add(user.id);
+    updateAddMembersButton();
+    renderAvailableUsers();
+}
+
+function updateAddMembersButton(){
+    confirmAddMembersButton.disabled=!(selectedMembersIds.size>0);
+}
+
+memberSearch.addEventListener("input", () => {
+    const search = memberSearch.value
+        .trim()
+        .toLowerCase();
+    filteredAvailableUsers = availableUsers.filter(user =>
+        user.username.toLowerCase().includes(search)
+    );
+    renderAvailableUsers();
+});
+
+async function addNewMembers() {
+    const response=await addMembers(token,currentConversation.id,[...selectedMembersIds]);
+    const data=await response.json();
+    if(!response.ok){
+        alert(data.detail);
+        return;
+    }
+    closeAddMembersModal();
 }

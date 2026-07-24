@@ -96,3 +96,25 @@ async function createGroupConversation(token, name, memberIds) {
         })
     });
 }
+
+async function addMembers(token,conversation_id,memberIds) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/members`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            member_ids: memberIds
+        })
+    });
+}
+async function getAvailableUsers(token,conversation_id) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/availableusers`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        }
+    });
+}

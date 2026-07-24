@@ -48,10 +48,10 @@
                 </div>
             </div>
             <div class="chat-actions">
-                <button id="add-member-btn">
+                <button id="add-member-btn" class="add-member hidden">
                     <i data-lucide="user-plus"></i>
                 </button>
-                <button type="button" id="chat-menu-btn">
+                <button type="button" id="chat-menu-btn" class="hidden">
                     <i data-lucide="ellipsis-vertical"></i>
                 </button>
             </div>
@@ -81,7 +81,7 @@
     <div id="chat-menu" class="chat-menu hidden">
         <button id="group-info-option"><i data-lucide="users"></i></i>Group Info</button>
         <button id="rename-group-option"><i data-lucide="pencil"></i>Rename Group</button>
-        <button id="add-member-option"><i data-lucide="user-plus"></i>Add Member</button>
+        <button id="add-member-option" class="add-member"><i data-lucide="user-plus"></i>Add Member</button>
         <button id="leave-group-option" class="danger"><i data-lucide="log-out"></i>Leave Group</button>
         <button id="delete-conversation-option" class="danger"><i data-lucide="trash-2"></i>Delete Conversation</button>
     </div>
@@ -116,16 +116,37 @@
             </div>
             <input
                 id="user-search"
+                class="modal-search"
                 placeholder="Search user..."
+                
             >
-            <div id="users-list"></div>
+            <div id="users-list" class="users-list"></div>
             
             <div class="modal-actions">
-                <button id="cancel-new-chat-btn">
+                <button id="cancel-new-chat-btn" class="cancel-btn">
                     Cancel
                 </button>
-                <button id="create-conversation-btn" disabled>
+                <button id="create-conversation-btn" class="primary-btn" disabled>
                     Create
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="add-members-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Add Members</h2>
+            <input
+                id="member-search"
+                class="modal-search"
+                placeholder="Search users..."
+            >
+            <div id="available-users-list" class="users-list"></div>
+            <div class="modal-actions">
+                <button id="cancel-add-members-btn" class="cancel-btn">
+                    Cancel
+                </button>
+                <button id="confirm-add-members-btn" class="primary-btn" disabled>
+                    Add Members
                 </button>
             </div>
         </div>

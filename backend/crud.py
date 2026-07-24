@@ -226,6 +226,21 @@ def delete_conversation(db:Session,conversation_id:int,requester_id:int):
 #============================================
 # CONVERSATION-MEMBER CRUD
 #============================================
+def get_available_users(db:Session,conversation_id:int,user_id:int):
+    if not get_conversation_by_id(db,conversation_id):
+        raise ValueError("Conversation does not exist.")
+    if not is_member(db,conversation_id,user_id):
+        raise ValueError("User is not a member of conversation.")
+    return db.scalars(
+        select(User)
+        .where(
+            User.id!=user_id,
+            ~exists().where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == User.id
+            )
+        )
+    ).all()
 
 def is_member(db:Session, conversation_id:int, user_id:int):
     query=(
@@ -284,6 +299,12 @@ def add_member(db:Session, conversation_id:int, requester_id:int, new_member_id:
     except Exception:
         db.rollback()
         raise
+
+def add_multi_members(db:Session,conversation_id:int,requester_id:int,member_ids:list[int]):
+    added_members=[]
+    for member_id in member_ids:
+        added_members.append(add_member(db,conversation_id,requester_id,member_id))
+    return added_members
 
 def make_admin(db:Session,conversation_id:int,requester_id:int,member_id:int):
     conversation=get_conversation_by_id(db,conversation_id)

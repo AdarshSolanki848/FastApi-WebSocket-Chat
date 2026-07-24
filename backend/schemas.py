@@ -26,11 +26,10 @@ class ConversationResponse(BaseModel):
     type: ConversationType
     name: str | None
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
-class AddMemberRequest(BaseModel):
-    user_id: int
+class AddMembersRequest(BaseModel):
+    member_ids: list[int]
 
 class MakeAdminRequest(BaseModel):
     user_id: int

@@ -646,10 +646,6 @@ button{
     z-index: 2000;
 }
 
-.modal.hidden {
-    display: none;
-}
-
 .modal-content {
     width: 450px;
     max-width: 90vw;
@@ -688,7 +684,7 @@ button{
 }
 
 #group-name,
-#user-search {
+.modal-search {
     width: 100%;
     padding: 10px 14px;
     border: 1px solid #d0d0d0;
@@ -700,11 +696,11 @@ button{
 }
 
 #group-name:focus,
-#user-search:focus {
+.modal-search:focus {
     border-color: #3b82f6;
 }
 
-#users-list {
+.users-list {
     max-height: 280px;
     overflow-y: auto;
     border: 1px solid #e5e5e5;
@@ -713,11 +709,11 @@ button{
 }
 
 
-#users-list::-webkit-scrollbar {
+.users-list::-webkit-scrollbar {
     width: 8px;
 }
 
-#users-list::-webkit-scrollbar-thumb {
+.users-list::-webkit-scrollbar-thumb {
     background: #c8c8c8;
     border-radius: 8px;
 }
@@ -762,29 +758,28 @@ button{
     transition: .2s;
 }
 
-#cancel-new-chat-btn {
+.cancel-btn{
     background: #f3f4f6;
     color: #333;
 }
 
-#cancel-new-chat-btn:hover {
+.cancel-btn:hover{
     background: #e5e7eb;
 }
 
-#create-conversation-btn {
+.primary-btn{
     background: #2563eb;
     color: white;
 }
 
-#create-conversation-btn:hover:not(:disabled) {
+.primary-btn:hover:not(:disabled) {
     background: #1d4ed8;
 }
 
-#create-conversation-btn:disabled {
+.primary-btn:disabled {
     background: #cbd5e1;
     cursor: not-allowed;
 }
-
 
 .hidden{
     display: none;

@@ -11,11 +11,12 @@ from schemas import (
     ConversationMemberResponse,
     CreatePrivateConversationRequest,
     CreateGroupConversationRequest,
-    AddMemberRequest,
+    AddMembersRequest,
     MakeAdminRequest,
     CreateMessageRequest,
     ConversationListItem,
-    ReadReceiptResponse
+    ReadReceiptResponse,
+    UserResponse
 )
 
 router=APIRouter(prefix="/conversations",tags=["Conversations"])
@@ -214,27 +215,57 @@ def create_messages(
             detail=str(e)
         )
       
-@router.post("/{conversation_id}/members",response_model=ConversationMemberResponse)
-def add_member(
-        request:AddMemberRequest,
+@router.post("/{conversation_id}/members",response_model=list[ConversationMemberResponse])
+async def add_members(
+        request:AddMembersRequest,
         conversation_id:int,
         db:Session=Depends(get_db),
         current_user:User=Depends(get_current_user)
     ):
     try:
-        member=crud.add_member(
+        members=crud.add_multi_members(
             db,
             conversation_id,
             current_user.id,
-            request.user_id
+            request.member_ids
         )
-        return member
+        conversation=crud.get_conversation_by_id(db,conversation_id)
+        conversation_members = crud.get_conversation_members(db, conversation_id)
+        for member_id in request.member_ids:
+            payload = {
+                "type": "conversation_created",
+                "conversation": crud.build_conversation_list_item(db,conversation,member_id)
+            }
+            await manager.send_to_user(member_id,payload)
+        for member in conversation_members:
+            if member.user_id in request.member_ids:
+                continue
+            payload = {
+                "type": "members_added",
+                "conversation_id": conversation_id,
+                "member_ids": request.member_ids
+            }
+            await manager.send_to_user(member.user_id, payload)
+        return members
     except ValueError as e:
         raise HTTPException(
             status_code=400,
             detail=str(e)
         )
-    
+@router.get("/{conversation_id}/availableusers",response_model=list[UserResponse])
+def get_available_users(
+        conversation_id:int,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    try:
+        return crud.get_available_users(db,conversation_id,current_user.id)
+    except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=str(e)
+            )
+
 @router.post("/{conversation_id}/admins",response_model=ConversationMemberResponse)
 def make_admin(
         request:MakeAdminRequest,
