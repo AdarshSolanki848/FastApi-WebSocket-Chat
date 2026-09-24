@@ -16,7 +16,8 @@ from schemas import (
     CreateMessageRequest,
     ConversationListItem,
     ReadReceiptResponse,
-    UserResponse
+    UserResponse,
+    ConversationMemberInfoResponse
 )
 
 router=APIRouter(prefix="/conversations",tags=["Conversations"])
@@ -179,7 +180,7 @@ def get_conversation_messages(conversation_id:int,
             )
         )
     return response
-#jjnjfrn
+
 @router.post("/{conversation_id}/messages",response_model=MessageResponse)
 def create_messages(
         request:CreateMessageRequest,
@@ -252,6 +253,31 @@ async def add_members(
             status_code=400,
             detail=str(e)
         )
+
+@router.get("/{conversation_id}/members",response_model=list[ConversationMemberInfoResponse])
+async def get_members(
+    conversation_id:int,
+    db:Session=Depends(get_db),
+    current_user:User=Depends(get_current_user)
+):
+    try:
+        conversation_members=crud.get_conversation_members_with_username(db,conversation_id)
+        return [
+        {
+            "conversation_id": member.conversation_id,
+            "user_id": member.user_id,
+            "username": username,
+            "joined_at": member.joined_at,
+            "role": member.role
+        }
+        for member,username in conversation_members
+    ]
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
 @router.get("/{conversation_id}/availableusers",response_model=list[UserResponse])
 def get_available_users(
         conversation_id:int,

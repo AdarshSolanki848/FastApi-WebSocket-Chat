@@ -42,11 +42,16 @@ const groupNameInput = document.getElementById("group-name");
 const createConversationButton = document.getElementById("create-conversation-btn");
 
 const addMembersButton=document.getElementById("add-member-btn");
+const addMembersOption=document.getElementById("add-member-option");
 const addMembersModal=document.getElementById("add-members-modal");
 const memberSearch=document.getElementById("member-search");
 const availableUsersList=document.getElementById("available-users-list");
 const cancelAddMembersButton = document.getElementById("cancel-add-members-btn");
 const confirmAddMembersButton = document.getElementById("confirm-add-members-btn");
+
+const groupInfoOption=document.getElementById("group-info-option")
+const groupInfoModal = document.getElementById("group-info-modal");
+const closeGroupInfoButton = document.getElementById("close-group-info-btn");
 
 document.addEventListener("DOMContentLoaded", initialize);
 logoutButton.addEventListener("click",logout);
@@ -81,8 +86,12 @@ groupNameInput.addEventListener("input",updateCreateButton);
 
 
 addMembersButton.addEventListener("click", openAddMembersModal);
+addMembersOption.addEventListener("click",openAddMembersModal);
 cancelAddMembersButton.addEventListener("click", closeAddMembersModal);
 confirmAddMembersButton.addEventListener("click",addNewMembers);
+
+groupInfoOption.addEventListener("click", openGroupInfoModal);
+closeGroupInfoButton.addEventListener("click", closeGroupInfoModal);
 
 function connectWebSocket() {
     websocket = new WebSocket(
@@ -792,4 +801,16 @@ async function addNewMembers() {
         return;
     }
     closeAddMembersModal();
+}
+
+function openGroupInfoModal() {
+    if (!currentConversation) return;
+    if (currentConversation.type === "private") return;
+
+    groupInfoModal.classList.remove("hidden");
+    chatMenu.classList.add("hidden");
+}
+
+function closeGroupInfoModal() {
+    groupInfoModal.classList.add("hidden");
 }

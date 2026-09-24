@@ -411,6 +411,16 @@ def get_conversation_members(db:Session,conversation_id:int):
         )
     )
     return db.scalars(query).all()
+
+def get_conversation_members_with_username(db:Session,conversation_id:int):
+    query=(
+        select(ConversationMember,User.username)
+        .join(User,User.id==ConversationMember.user_id)
+        .where(
+            ConversationMember.conversation_id==conversation_id
+        )
+    )
+    return db.execute(query).all()
 #============================================
 # MESSAGE CRUD
 #============================================

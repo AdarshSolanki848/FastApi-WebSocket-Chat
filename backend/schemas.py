@@ -59,6 +59,14 @@ class ConversationMemberResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class ConversationMemberInfoResponse(BaseModel):
+    conversation_id: int
+    user_id: int
+    username: str
+    joined_at: datetime
+    role: MemberRole
+    model_config = ConfigDict(from_attributes=True)
+
 class UserResponse(BaseModel):
     id:int
     username:str
