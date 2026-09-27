@@ -1,3 +1,4 @@
+
 let token = null;
 let currentUser = null;
 let conversations = [];
@@ -52,6 +53,7 @@ const confirmAddMembersButton = document.getElementById("confirm-add-members-btn
 const groupInfoOption=document.getElementById("group-info-option")
 const groupInfoModal = document.getElementById("group-info-modal");
 const closeGroupInfoButton = document.getElementById("close-group-info-btn");
+const groupInfoContent=document.getElementById("group-info-content");
 
 document.addEventListener("DOMContentLoaded", initialize);
 logoutButton.addEventListener("click",logout);
@@ -803,9 +805,92 @@ async function addNewMembers() {
     closeAddMembersModal();
 }
 
-function openGroupInfoModal() {
+async function openGroupInfoModal() {
     if (!currentConversation) return;
     if (currentConversation.type === "private") return;
+    const response=await getConversationMembers(token,currentConversation.id);
+    if(!response.ok){
+        alert("Failed to load group members.");
+        return;
+    }
+    const members = await response.json();
+    // console.log(currentConversation);
+    console.log(members);
+
+    groupInfoContent.innerHTML="";
+    const header=document.createElement("div");
+    header.classList.add("group-info-header");
+
+    const groupDP=document.createElement("div");
+    groupDP.classList.add("group-info-dp");
+    groupDP.textContent=currentConversation.avatar;
+
+    const groupName = document.createElement("h2");
+    groupName.textContent = currentConversation.display_name;
+
+    const memberCount = document.createElement("p");
+    memberCount.textContent =
+        `${members.length} ${members.length === 1 ? "member" : "members"}`;
+    header.appendChild(groupDP);
+    header.appendChild(groupName);
+    header.appendChild(memberCount);
+
+    const membersSection = document.createElement("div");
+    membersSection.classList.add("members-section");
+
+    const membersTitle = document.createElement("h3");
+    membersTitle.textContent = "Members";
+
+    const membersList = document.createElement("div");
+    membersList.classList.add("members-list");
+
+    membersSection.appendChild(membersTitle);
+    membersSection.appendChild(membersList);
+    groupInfoContent.appendChild(membersSection);
+
+    members.forEach(member => {
+        const memberItem = document.createElement("div");
+        memberItem.classList.add("member-item");
+
+        const avatar = document.createElement("div");
+        avatar.classList.add("member-avatar");
+        avatar.textContent = member.username.charAt(0).toUpperCase();
+
+        const details = document.createElement("div");
+        details.classList.add("member-details");
+
+        const username = document.createElement("strong");
+        username.textContent = member.username;
+
+        const role = document.createElement("span");
+        role.textContent = member.role;
+
+        details.appendChild(username);
+        details.appendChild(role);
+
+        const removeButton = document.createElement("button");
+
+        removeButton.classList.add("remove-member-btn");
+        const trashIcon = document.createElement("i");
+        trashIcon.setAttribute("data-lucide", "trash-2");
+        removeButton.appendChild(trashIcon);
+
+        removeButton.title = "Remove member";
+
+        removeButton.addEventListener("click", () => {
+            removeMemberFromGroup(member);
+        });
+
+        memberItem.appendChild(avatar);
+        memberItem.appendChild(details);
+        memberItem.appendChild(removeButton);
+
+        membersList.appendChild(memberItem);
+        lucide.createIcons();
+    });
+    
+
+    // console.log(members);
 
     groupInfoModal.classList.remove("hidden");
     chatMenu.classList.add("hidden");
@@ -813,4 +898,18 @@ function openGroupInfoModal() {
 
 function closeGroupInfoModal() {
     groupInfoModal.classList.add("hidden");
+    groupInfoContent.innerHTML="";
+}
+
+async function removeMemberFromGroup(member) {
+    const confirmation=confirm(`
+        Remove ${member.username} from the group?`);
+    if(!confirmation)return;
+    const response= await removeConversationMember(token,currentConversation.id,member.user_id);
+    if(!response.ok){
+        const error = await response.json();
+        alert(error.detail || "Failed to remove member.");
+        return;
+    }
+    openGroupInfoModal();
 }

@@ -1,0 +1,1 @@
+/{conversation_id}/members/{member_id}

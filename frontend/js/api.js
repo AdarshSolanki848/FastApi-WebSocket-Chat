@@ -118,3 +118,21 @@ async function getAvailableUsers(token,conversation_id) {
         }
     });
 }
+
+async function getConversationMembers(token,conversation_id) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/members`,{
+        headers:{
+            Authorization: `Bearer ${token}`
+        }
+    });
+    
+}
+
+async function removeConversationMember(token,conversation_id,member_id) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/members/${member_id}`,{
+        method:"DELETE",
+        headers:{
+            "Authorization": `Bearer ${token}`
+        }
+    });
+}
