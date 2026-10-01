@@ -137,6 +137,9 @@ function handleSocketMessage(event) {
         case "members_added":
             handleMembersAdded(data);
             break;
+        case "member_removed":
+            handleMemberRemoved(data);
+            break;
         case "error":
             alert(data.message);
             break;
@@ -258,6 +261,57 @@ function handleMembersAdded(data) {
     if (!currentConversation) return;
     if (currentConversation.id !== data.conversation_id)
         return;
+}
+
+async function handleMemberRemoved(data) {
+
+    if(currentUser.id===data.member_id){
+        // console.log("This user was removed. Reloading conversations...");
+        await loadConversations();
+        if(currentConversation && currentConversation.id===data.conversation_id){
+            currentConversation = null;
+            // Reset chat header
+            chatAvatar.textContent = "A";
+            chatName.textContent = "Select a Conversation";
+            chatStatus.textContent = "No conversation selected";
+            // Hide group/chat actions
+            addMembersButton.classList.add("hidden");
+            chatMenuButton.classList.add("hidden");
+            messagesContainer.innerHTML = `
+                <div class="empty-chat" id="empty-chat">
+                    <div class="empty-chat-icon">
+                        💬
+                    </div>
+                    <h2>Select a Conversation</h2>
+                    <p>
+                        Choose a conversation from the sidebar
+                        or create a new one.
+                    </p>
+                </div>
+            `;
+        }
+    }
+    if (!currentConversation || currentConversation.id !== data.conversation_id) {
+        return;
+    }
+    // if(data.removed_by_id===currentUser.id)closeGroupInfoModal();
+    const systemMessage = document.createElement("div");
+    systemMessage.classList.add("system-message", "member-removed-message");
+
+    const icon = document.createElement("i");
+    icon.setAttribute("data-lucide", "user-minus");
+
+    const text = document.createElement("span");
+    text.textContent = `${data.member_name} was removed by ${data.removed_by_name}`;
+
+    systemMessage.appendChild(icon);
+    systemMessage.appendChild(text);
+
+    messagesContainer.appendChild(systemMessage);
+
+    lucide.createIcons();
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
 async function initialize() {
@@ -814,8 +868,6 @@ async function openGroupInfoModal() {
         return;
     }
     const members = await response.json();
-    // console.log(currentConversation);
-    console.log(members);
 
     groupInfoContent.innerHTML="";
     const header=document.createElement("div");
@@ -909,7 +961,11 @@ async function removeMemberFromGroup(member) {
     if(!response.ok){
         const error = await response.json();
         alert(error.detail || "Failed to remove member.");
+        openGroupInfoModal();
         return;
     }
-    openGroupInfoModal();
+    closeGroupInfoModal();
 }
+
+
+

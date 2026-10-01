@@ -314,20 +314,33 @@ def make_admin(
         )
     
 @router.delete("/{conversation_id}/members/{member_id}",response_model=ConversationMemberResponse)
-def remove_member(
+async def remove_member(
         conversation_id:int,
         member_id:int,
         db:Session=Depends(get_db),
         current_user:User=Depends(get_current_user)
     ):
     try:
-        member=crud.remove_member(
+        conversation_members=crud.get_conversation_members(db,conversation_id)
+        removed_member=crud.remove_member(
             db,
             conversation_id,
             current_user.id,
             member_id
         )
-        return member
+        removed_user=crud.get_user_by_id(db,member_id)
+        for member in conversation_members:
+            payload={
+                "type":"member_removed",
+                "conversation_id": conversation_id,
+                "member_id":member_id,
+                "member_name":removed_user.username,
+                "removed_by_id":current_user.id,
+                "removed_by_name":current_user.username
+            }
+            await manager.send_to_user(member.user_id,payload)
+
+        return removed_member
     except ValueError as e:
         raise HTTPException(
             status_code=400,
