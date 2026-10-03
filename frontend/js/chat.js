@@ -258,9 +258,9 @@ function handleConversationCreated(data){
 }
 
 function handleMembersAdded(data) {
-    if (!currentConversation) return;
-    if (currentConversation.id !== data.conversation_id)
+    if (!currentConversation || currentConversation.id !== data.conversation_id)
         return;
+    loadMessages(currentConversation.id);
 }
 
 async function handleMemberRemoved(data) {
@@ -294,24 +294,8 @@ async function handleMemberRemoved(data) {
     if (!currentConversation || currentConversation.id !== data.conversation_id) {
         return;
     }
-    // if(data.removed_by_id===currentUser.id)closeGroupInfoModal();
-    const systemMessage = document.createElement("div");
-    systemMessage.classList.add("system-message", "member-removed-message");
-
-    const icon = document.createElement("i");
-    icon.setAttribute("data-lucide", "user-minus");
-
-    const text = document.createElement("span");
-    text.textContent = `${data.member_name} was removed by ${data.removed_by_name}`;
-
-    systemMessage.appendChild(icon);
-    systemMessage.appendChild(text);
-
-    messagesContainer.appendChild(systemMessage);
-
-    lucide.createIcons();
-
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    loadMessages(currentConversation.id);
+    console.log(`${data.member_name} was removed by ${data.removed_by_name}`);
 }
 
 async function initialize() {
@@ -474,6 +458,17 @@ function renderMessages(){
 }
 
 function createMessageElement(message){
+    if (message.message_type === "system") {
+        const row = document.createElement("div");
+        row.className = "system-message-row";
+        const icon = document.createElement("i");
+        icon.setAttribute("data-lucide", "user-minus");
+        const content = document.createElement("span");
+        content.textContent = message.content;
+        row.appendChild(icon);
+        row.appendChild(content);
+        return row;
+    }
     const row=document.createElement("div");
     const bubble=document.createElement("div");
     const content=document.createElement("p");

@@ -46,7 +46,9 @@ class MessageResponse(BaseModel):
     id: int
     content: str
     conversation_id: int
-    sender_id: int
+    sender_id: int | None
+    message_type: str
+    system_action: str | None
     created_at: datetime
     read_by: list[ReadReceiptResponse]
     model_config = ConfigDict(from_attributes=True)

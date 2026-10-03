@@ -292,7 +292,16 @@ def add_member(db:Session, conversation_id:int, requester_id:int, new_member_id:
             user_id=new_member_id,
             role=MemberRole.MEMBER
         )
+        new_member=get_user_by_id(db,new_member_id)
+        requester=get_user_by_id(db,requester_id)
+        create_system_message(
+                    db,
+                    conversation_id,
+                    f"{new_member.username} was added by {requester.username}",
+                    "member_added"
+                )
         db.add(member)
+
         db.commit()
         db.refresh(member)
         return member
@@ -396,6 +405,14 @@ def remove_member(db:Session,conversation_id:int,requester_id:int,member_id:int)
         if get_admin_count(db,conversation_id)==0:
             new_admin=db.scalar(select(ConversationMember).where(ConversationMember.conversation_id==conversation_id))
             new_admin.role=MemberRole.ADMIN
+        removed_user = get_user_by_id(db, member_id)
+        requester = get_user_by_id(db, requester_id)
+        create_system_message(
+            db,
+            conversation_id,
+            f"{removed_user.username} was removed by {requester.username}",
+            "member_removed"
+        )
         db.commit()
         db.refresh(conversation)
         return membership
@@ -449,6 +466,23 @@ def create_message(db:Session,conversation_id:int,sender_id:int,content:str):
         db.rollback()
         raise
 
+def create_system_message(db:Session,conversation_id:int, content:str, system_action:str):
+    if not get_conversation_by_id(db,conversation_id):
+        raise ValueError("Conversation does not exist.")
+    if content=="":
+        raise ValueError("Content cannot be empty.")
+    message = Message(
+        conversation_id=conversation_id,
+        sender_id=None,
+        content=content,
+        message_type="system",
+        system_action=system_action
+    )
+
+    db.add(message)
+    db.flush()
+    return message
+         
 def get_message_by_id(db:Session,message_id:int):
     return db.scalar(
         select(Message)

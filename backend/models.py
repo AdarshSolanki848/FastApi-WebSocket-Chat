@@ -108,9 +108,18 @@ class Message(Base):
         ForeignKey("conversations.id"),
         nullable=False
     )
-    sender_id:Mapped[int]=mapped_column(
+    sender_id:Mapped[int | None]=mapped_column(
         ForeignKey("users.id"),
+        nullable=True
+    )
+    message_type: Mapped[str] = mapped_column(
+        String,
+        default="user",
         nullable=False
+    )
+    system_action: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True
     )
     sender: Mapped["User"] = relationship(
     back_populates="messages",

@@ -168,6 +168,8 @@ def get_conversation_messages(conversation_id:int,
                 conversation_id=message.conversation_id,
                 sender_id=message.sender_id,
                 content=message.content,
+                message_type=message.message_type,
+                system_action=message.system_action,
                 created_at=message.created_at,
                 read_by=[
                     ReadReceiptResponse(
