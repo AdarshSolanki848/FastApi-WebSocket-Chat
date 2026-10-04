@@ -136,3 +136,16 @@ async function removeConversationMember(token,conversation_id,member_id) {
         }
     });
 }
+
+async function updateGroupName(token,conversation_id,name) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/name`,{
+        method:"PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            name: name
+        })
+    });
+}

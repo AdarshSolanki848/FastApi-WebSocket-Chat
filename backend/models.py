@@ -63,7 +63,6 @@ class Conversation(Base):
         lazy="selectin"
     )
 
-
 class ConversationMember(Base):
     __tablename__ = "conversation_members"
     conversation_id: Mapped[int] = mapped_column(

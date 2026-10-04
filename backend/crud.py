@@ -222,6 +222,39 @@ def delete_conversation(db:Session,conversation_id:int,requester_id:int):
     except Exception:
         db.rollback()
         raise
+
+def update_group_name(db:Session,conversation_id:int,requester_id:int,new_name:str):
+    conversation=get_conversation_by_id(db,conversation_id)
+    if not conversation:
+       raise ValueError("Conversation does not exist")
+    if conversation.type == ConversationType.PRIVATE:
+        raise ValueError("Cannot rename a private conversation.")
+    if not is_member(db, conversation_id, requester_id):
+        raise ValueError("Requester is not a member of conversation.")
+    if not is_admin(db, conversation_id, requester_id):
+        raise ValueError("Only admins can change the group name.")
+    new_name = new_name.strip()
+    if new_name == "":
+        raise ValueError("Group name cannot be empty.")
+    if len(new_name) > 100:
+        raise ValueError("Group name cannot exceed 100 characters.")
+    try:
+        old_name=conversation.name
+        conversation.name = new_name
+        db.flush()
+        create_system_message(
+                db,
+                conversation_id,
+                f"{get_user_by_id(db,requester_id).username} changed the group name from "
+                f'"{old_name}" to "{conversation.name}"',
+                "group_name_changed"
+            )
+        db.commit()
+        db.refresh(conversation)
+        return conversation
+    except Exception:
+        db.rollback()
+        raise
     
 #============================================
 # CONVERSATION-MEMBER CRUD

@@ -55,6 +55,13 @@ const groupInfoModal = document.getElementById("group-info-modal");
 const closeGroupInfoButton = document.getElementById("close-group-info-btn");
 const groupInfoContent=document.getElementById("group-info-content");
 
+const renameGroupOption=document.getElementById("rename-group-option");
+const renameGroupModal=document.getElementById("rename-group-modal");
+const cancelGroupRenameButton=document.getElementById("cancel-group-rename-btn");
+const saveGroupRenameButton=document.getElementById("save-group-rename-btn");
+const groupRenameInput=document.getElementById("group-rename-input");
+
+
 document.addEventListener("DOMContentLoaded", initialize);
 logoutButton.addEventListener("click",logout);
 sendMessageButton.addEventListener("click", sendMessage);
@@ -85,8 +92,6 @@ cancelNewChatButton.addEventListener("click", closeNewConversationModal);
 createConversationButton.addEventListener("click", createConversation);
 groupNameInput.addEventListener("input",updateCreateButton);
 
-
-
 addMembersButton.addEventListener("click", openAddMembersModal);
 addMembersOption.addEventListener("click",openAddMembersModal);
 cancelAddMembersButton.addEventListener("click", closeAddMembersModal);
@@ -94,6 +99,10 @@ confirmAddMembersButton.addEventListener("click",addNewMembers);
 
 groupInfoOption.addEventListener("click", openGroupInfoModal);
 closeGroupInfoButton.addEventListener("click", closeGroupInfoModal);
+
+renameGroupOption.addEventListener("click",openRenameGroupModal);
+cancelGroupRenameButton.addEventListener("click",closeRenameGroupModal);
+saveGroupRenameButton.addEventListener("click",renameGroup);
 
 function connectWebSocket() {
     websocket = new WebSocket(
@@ -139,6 +148,9 @@ function handleSocketMessage(event) {
             break;
         case "member_removed":
             handleMemberRemoved(data);
+            break;
+        case "group_name_changed":
+            handleGroupNameChanged(data);
             break;
         case "error":
             alert(data.message);
@@ -261,6 +273,7 @@ function handleMembersAdded(data) {
     if (!currentConversation || currentConversation.id !== data.conversation_id)
         return;
     loadMessages(currentConversation.id);
+    renderConversationList();
 }
 
 async function handleMemberRemoved(data) {
@@ -295,7 +308,34 @@ async function handleMemberRemoved(data) {
         return;
     }
     loadMessages(currentConversation.id);
-    console.log(`${data.member_name} was removed by ${data.removed_by_name}`);
+    renderConversationList();
+    // console.log(`${data.member_name} was removed by ${data.removed_by_name}`);
+}
+
+function handleGroupNameChanged(data){
+    // console.log("group name changed");
+    // console.log(conversations);
+    // console.log(currentConversation);
+    // console.log(data.conversation);
+    const existingConversation=conversations.find(
+        c=>c.id===data.conversation.id
+    );
+    if(existingConversation){
+        existingConversation.display_name=data.conversation.display_name;
+        existingConversation.avatar=data.conversation.avatar;
+        existingConversation.last_message=data.conversation.last_message;
+        existingConversation.last_message_time=data.conversation.last_message_time;
+        existingConversation.unread_count=data.conversation.unread_count;
+    }
+    if (
+        currentConversation &&
+        currentConversation.id === data.conversation.id
+    ) {
+        currentConversation=data.conversation;
+        updateChatHeader(currentConversation);
+        loadMessages(currentConversation.id);
+    }
+    renderConversationList();
 }
 
 async function initialize() {
@@ -462,7 +502,8 @@ function createMessageElement(message){
         const row = document.createElement("div");
         row.className = "system-message-row";
         const icon = document.createElement("i");
-        icon.setAttribute("data-lucide", "user-minus");
+        if(message.system_action==="member_removed")icon.setAttribute("data-lucide", "user-minus");
+        else if(message.system_action==="member_added")icon.setAttribute("data-lucide", "user-plus");
         const content = document.createElement("span");
         content.textContent = message.content;
         row.appendChild(icon);
@@ -863,7 +904,8 @@ async function openGroupInfoModal() {
         return;
     }
     const members = await response.json();
-
+    console.log(currentUser);
+    console.log(members);
     groupInfoContent.innerHTML="";
     const header=document.createElement("div");
     header.classList.add("group-info-header");
@@ -881,7 +923,7 @@ async function openGroupInfoModal() {
     header.appendChild(groupDP);
     header.appendChild(groupName);
     header.appendChild(memberCount);
-
+    groupInfoContent.appendChild(header);
     const membersSection = document.createElement("div");
     membersSection.classList.add("members-section");
 
@@ -898,7 +940,7 @@ async function openGroupInfoModal() {
     members.forEach(member => {
         const memberItem = document.createElement("div");
         memberItem.classList.add("member-item");
-
+        if(member.user_id===currentUser.id)memberItem.classList.add("current-user");
         const avatar = document.createElement("div");
         avatar.classList.add("member-avatar");
         avatar.textContent = member.username.charAt(0).toUpperCase();
@@ -962,5 +1004,37 @@ async function removeMemberFromGroup(member) {
     closeGroupInfoModal();
 }
 
+function openRenameGroupModal(){
+    if (!currentConversation || currentConversation.type === "private") return;
+    groupRenameInput.value = currentConversation.display_name || "";
+    // console.log(g)
+    renameGroupModal.classList.remove("hidden");
+    chatMenu.classList.add("hidden");
+    groupRenameInput.focus();
+}
 
+function closeRenameGroupModal(){
+    renameGroupModal.classList.add("hidden");
+}
+
+async function renameGroup(){
+    if (!currentConversation || currentConversation.type === "private") return;
+    const newName = groupRenameInput.value.trim();
+    if (!newName) {
+        alert("Group name cannot be empty.");
+        return;
+    }
+    if(newName===currentConversation.display_name){
+        alert(`New name cannot be same.`);
+        return;
+    }
+    const response=await updateGroupName(token,currentConversation.id,newName);
+    if(!response.ok){
+        const error = await response.json();
+        alert(error.detail || "Failed to update group name.");
+        openRenameGroupModal();
+        return;
+    }
+    closeRenameGroupModal();
+}
 

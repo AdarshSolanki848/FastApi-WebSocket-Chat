@@ -84,3 +84,6 @@ class ConversationListItem(BaseModel):
     unread_count: int
     created_at:datetime
     model_config = ConfigDict(from_attributes=True)
+
+class UpdateGroupNameRequest(BaseModel):
+    name:str

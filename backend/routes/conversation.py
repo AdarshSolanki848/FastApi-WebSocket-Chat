@@ -17,7 +17,8 @@ from schemas import (
     ConversationListItem,
     ReadReceiptResponse,
     UserResponse,
-    ConversationMemberInfoResponse
+    ConversationMemberInfoResponse,
+    UpdateGroupNameRequest
 )
 
 router=APIRouter(prefix="/conversations",tags=["Conversations"])
@@ -348,3 +349,39 @@ async def remove_member(
             status_code=400,
             detail=str(e)
         )
+
+@router.patch("/{conversation_id}/name",response_model=ConversationListItem)
+async def update_group_name(
+        request:UpdateGroupNameRequest,
+        conversation_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+    ):
+    try:
+        conversation=crud.update_group_name(db,conversation_id,current_user.id,request.name)
+        members = crud.get_conversation_members(
+            db,
+            conversation_id
+        )
+
+        for member in members:
+            payload = {
+                "type": "group_name_changed",
+                "conversation": crud.build_conversation_list_item(
+                    db,
+                    conversation,
+                    member.user_id
+                )
+            }
+            await manager.send_to_user(
+                member.user_id,
+                payload
+            )
+        response=crud.build_conversation_list_item(db,conversation,current_user.id)
+        return response
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
