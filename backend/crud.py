@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session,aliased
-from sqlalchemy import select,func,exists
+from sqlalchemy import select,func,exists, or_
 from models import (
     User,
     Conversation,
@@ -242,7 +242,7 @@ def update_group_name(db:Session,conversation_id:int,requester_id:int,new_name:s
         old_name=conversation.name
         conversation.name = new_name
         db.flush()
-        create_system_message(
+        system_message=create_system_message(
                 db,
                 conversation_id,
                 f"{get_user_by_id(db,requester_id).username} changed the group name from "
@@ -574,7 +574,10 @@ def get_unread_message(db:Session,conversation_id:int,user_id:int):
         select(Message)
         .where(
             Message.conversation_id==conversation_id,
-            Message.sender_id!=user_id,
+            or_(
+                Message.sender_id != user_id,
+                Message.sender_id.is_(None)
+            ),
             ~exists()
             .where(
                 MessageRead.message_id==Message.id,
@@ -589,7 +592,10 @@ def get_unread_message_count(db:Session,conversation_id:int,user_id:int):
             .select_from(Message)
             .where(
                 Message.conversation_id == conversation_id,
-                Message.sender_id != user_id,
+                or_(
+                    Message.sender_id != user_id,
+                    Message.sender_id.is_(None)
+                ),
                 ~exists().where(
                     MessageRead.message_id == Message.id,
                     MessageRead.user_id == user_id

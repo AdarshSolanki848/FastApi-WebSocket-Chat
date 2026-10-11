@@ -245,6 +245,7 @@ body{
 .conversation-bottom{
     margin-top:4px;
     display: flex;
+    width: 100%;
     min-width: 0;
 }
 
@@ -278,6 +279,7 @@ body{
     font-weight:600;
 
     flex-shrink:0;
+    margin-left:auto;
 }
 
 

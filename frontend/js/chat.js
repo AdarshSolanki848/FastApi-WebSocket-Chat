@@ -323,9 +323,6 @@ function handleGroupNameChanged(data){
     if(existingConversation){
         existingConversation.display_name=data.conversation.display_name;
         existingConversation.avatar=data.conversation.avatar;
-        existingConversation.last_message=data.conversation.last_message;
-        existingConversation.last_message_time=data.conversation.last_message_time;
-        existingConversation.unread_count=data.conversation.unread_count;
     }
     if (
         currentConversation &&
@@ -335,7 +332,12 @@ function handleGroupNameChanged(data){
         updateChatHeader(currentConversation);
         loadMessages(currentConversation.id);
     }
-    renderConversationList();
+    const message={
+        "conversation_id":data.conversation.id,
+        "content":data.conversation.last_message,
+        "created_at":data.conversation.last_message_time,
+    }
+    updateConversationPreview(message);
 }
 
 async function initialize() {
@@ -441,6 +443,7 @@ function createConversationElement(conversation){
 
 async function openConversation(conversation){
     currentConversation=conversation;
+    // console.log(currentConversation);
     conversation.unread_count = 0;
     if(currentConversation.type==="private")addMembersButton.classList.add("hidden");
     else addMembersButton.classList.remove("hidden");
