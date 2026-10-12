@@ -61,14 +61,13 @@ const cancelGroupRenameButton=document.getElementById("cancel-group-rename-btn")
 const saveGroupRenameButton=document.getElementById("save-group-rename-btn");
 const groupRenameInput=document.getElementById("group-rename-input");
 
+const leaveGroupOption=document.getElementById("leave-group-option");
 
 document.addEventListener("DOMContentLoaded", initialize);
 logoutButton.addEventListener("click",logout);
 sendMessageButton.addEventListener("click", sendMessage);
 messageInput.addEventListener("input",handleTypingInput);
-chatMenuButton.addEventListener("click", () => {
-    chatMenu.classList.toggle("hidden");
-});
+chatMenuButton.addEventListener("click", openChatMenuModal);
 
 document.addEventListener("visibilitychange", () => {
     if (
@@ -84,7 +83,8 @@ document.addEventListener("visibilitychange", () => {
 document.addEventListener("click", (event) => {
     if (!chatMenu.contains(event.target) &&!chatMenuButton.contains(event.target)) 
     {
-        chatMenu.classList.add("hidden");
+        closeChatMenuModal();
+        // }
     }
 });
 newConversationButton.addEventListener("click",openNewConversationModal);
@@ -103,6 +103,8 @@ closeGroupInfoButton.addEventListener("click", closeGroupInfoModal);
 renameGroupOption.addEventListener("click",openRenameGroupModal);
 cancelGroupRenameButton.addEventListener("click",closeRenameGroupModal);
 saveGroupRenameButton.addEventListener("click",renameGroup);
+
+leaveGroupOption.addEventListener('click',leaveGroup);
 
 function connectWebSocket() {
     websocket = new WebSocket(
@@ -147,6 +149,9 @@ function handleSocketMessage(event) {
             handleMembersAdded(data);
             break;
         case "member_removed":
+            handleMemberRemoved(data);
+            break;
+        case "member_left":
             handleMemberRemoved(data);
             break;
         case "group_name_changed":
@@ -226,7 +231,7 @@ function handleStopTyping(data) {
 }
 
 function handleMarkRead(data) {
-    console.log("Read:", data);
+    // console.log("Read:", data);
     data.message_ids.forEach(messageId => {
         const message = messages.find(m => m.id === messageId);
         if (!message) return;
@@ -270,24 +275,25 @@ function handleConversationCreated(data){
 }
 
 function handleMembersAdded(data) {
-    if (!currentConversation || currentConversation.id !== data.conversation_id)
-        return;
-    loadMessages(currentConversation.id);
-    renderConversationList();
+    if (currentConversation && currentConversation.id === data.conversation.id)
+        loadMessages(currentConversation.id);
+    const message={
+        "conversation_id":data.conversation.id,
+        "content":data.conversation.last_message,
+        "created_at":data.conversation.last_message_time,
+    }
+    updateConversationPreview(message);
 }
 
 async function handleMemberRemoved(data) {
-
     if(currentUser.id===data.member_id){
         // console.log("This user was removed. Reloading conversations...");
         await loadConversations();
-        if(currentConversation && currentConversation.id===data.conversation_id){
+        if(currentConversation && currentConversation.id===data.conversation.id){
             currentConversation = null;
-            // Reset chat header
             chatAvatar.textContent = "A";
             chatName.textContent = "Select a Conversation";
             chatStatus.textContent = "No conversation selected";
-            // Hide group/chat actions
             addMembersButton.classList.add("hidden");
             chatMenuButton.classList.add("hidden");
             messagesContainer.innerHTML = `
@@ -304,19 +310,18 @@ async function handleMemberRemoved(data) {
             `;
         }
     }
-    if (!currentConversation || currentConversation.id !== data.conversation_id) {
-        return;
+    if (currentConversation && currentConversation.id === data.conversation.id) {
+        loadMessages(currentConversation.id);
     }
-    loadMessages(currentConversation.id);
-    renderConversationList();
-    // console.log(`${data.member_name} was removed by ${data.removed_by_name}`);
+    const message={
+        "conversation_id":data.conversation.id,
+        "content":data.conversation.last_message,
+        "created_at":data.conversation.last_message_time,
+    }
+    updateConversationPreview(message);
 }
 
 function handleGroupNameChanged(data){
-    // console.log("group name changed");
-    // console.log(conversations);
-    // console.log(currentConversation);
-    // console.log(data.conversation);
     const existingConversation=conversations.find(
         c=>c.id===data.conversation.id
     );
@@ -719,7 +724,7 @@ async function openNewConversationModal() {
 function closeNewConversationModal() {
     newConversationModal.classList.add("hidden");
     selectedUserId = null;
-    selectedUsersIds.clear();
+    selectedUserIds.clear();
     groupNameInput.value = "";
     userSearch.value = "";
     document.querySelector('input[value="private"]').checked = true;
@@ -1041,3 +1046,37 @@ async function renameGroup(){
     closeRenameGroupModal();
 }
 
+async function leaveGroup() {
+    if(!currentConversation || currentConversation.type=="private")return;
+    const confirmation=confirm(`
+        Do you want to leave group?`);
+    if(!confirmation)return;
+    const response= await leaveTheGroup(token,currentConversation.id);
+    if(!response.ok){
+        const error = await response.json();
+        alert(error.detail || "Failed to leave.");
+        openGroupInfoModal();
+        return;
+    }
+    closeChatMenuModal();
+}
+
+function openChatMenuModal(){
+    chatMenu.classList.toggle("hidden");
+    if (currentConversation) {
+        console.log("Current conversation:", currentConversation);
+        console.log("Conversation type:", currentConversation.type);
+        const isPrivate = currentConversation.type === "private";
+        groupInfoOption.classList.toggle("hidden", isPrivate);
+        renameGroupOption.classList.toggle("hidden", isPrivate);
+        addMembersOption.classList.toggle("hidden", isPrivate);
+    }
+}
+
+function closeChatMenuModal(){
+    chatMenu.classList.add("hidden");
+        // if(currentConversation && currentConversation.type=="private"){
+    groupInfoOption.classList.remove("hidden");
+    renameGroupOption.classList.remove("hidden");
+    addMembersOption.classList.remove("hidden");
+}

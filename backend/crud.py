@@ -334,7 +334,6 @@ def add_member(db:Session, conversation_id:int, requester_id:int, new_member_id:
                     "member_added"
                 )
         db.add(member)
-
         db.commit()
         db.refresh(member)
         return member
@@ -452,6 +451,46 @@ def remove_member(db:Session,conversation_id:int,requester_id:int,member_id:int)
     except Exception:
         db.rollback()
         raise
+
+def leave_group(db:Session,conversation_id:int,user_id:int):
+    conversation=get_conversation_by_id(db,conversation_id)
+    if not conversation:
+        raise ValueError("Conversation does not exist.")
+    if conversation.type==ConversationType.PRIVATE:
+        raise ValueError("Cannot remove a member from private conversation.")
+    if not is_member(db,conversation_id,user_id):
+        raise ValueError("User is not a member of conversation.")
+    try:
+        membership=db.scalar(
+            select(ConversationMember)
+            .where(
+                ConversationMember.conversation_id==conversation_id,
+                ConversationMember.user_id==user_id
+            )
+        )
+        db.delete(membership)
+        db.flush()
+        if get_member_count(db,conversation_id)==0:
+            db.delete(conversation)
+            db.commit()
+            return membership
+        if get_admin_count(db,conversation_id)==0:
+            new_admin=db.scalar(select(ConversationMember).where(ConversationMember.conversation_id==conversation_id))
+            new_admin.role=MemberRole.ADMIN
+        leaving_user=get_user_by_id(db,user_id)
+        create_system_message(
+            db,
+            conversation_id,
+            f"{leaving_user.username} left the group.",
+            "member_left"
+        )
+        db.commit()
+        db.refresh(conversation)
+        return membership
+    except Exception:
+        db.rollback()
+        raise
+
 
 def get_conversation_members(db:Session,conversation_id:int):
     query=(

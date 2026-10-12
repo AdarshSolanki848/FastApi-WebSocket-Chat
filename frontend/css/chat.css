@@ -792,7 +792,7 @@ button{
 }
 
 .hidden{
-    display: none;
+    display: none !important;
 }
 
 .group-info-header {

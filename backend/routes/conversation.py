@@ -246,7 +246,7 @@ async def add_members(
                 continue
             payload = {
                 "type": "members_added",
-                "conversation_id": conversation_id,
+                "conversation":crud.build_conversation_list_item(db,conversation,member_id),
                 "member_ids": request.member_ids
             }
             await manager.send_to_user(member.user_id, payload)
@@ -324,6 +324,7 @@ async def remove_member(
         current_user:User=Depends(get_current_user)
     ):
     try:
+        conversation=crud.get_conversation_by_id(db,conversation_id)
         conversation_members=crud.get_conversation_members(db,conversation_id)
         removed_member=crud.remove_member(
             db,
@@ -335,7 +336,7 @@ async def remove_member(
         for member in conversation_members:
             payload={
                 "type":"member_removed",
-                "conversation_id": conversation_id,
+                "conversation":crud.build_conversation_list_item(db,conversation,member.user_id),
                 "member_id":member_id,
                 "member_name":removed_user.username,
                 "removed_by_id":current_user.id,
@@ -344,6 +345,32 @@ async def remove_member(
             await manager.send_to_user(member.user_id,payload)
 
         return removed_member
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+@router.delete("/{conversation_id}/leave",response_model=ConversationMemberResponse)
+async def leave_group(
+        conversation_id:int,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    try:
+        conversation=crud.get_conversation_by_id(db,conversation_id)
+        conversation_members=crud.get_conversation_members(db,conversation_id)
+        leaving_user=crud.leave_group(db,conversation_id,current_user.id)
+        for member in conversation_members:
+            payload={
+                "type":"member_left",
+                "conversation":crud.build_conversation_list_item(db,conversation,member.user_id),
+                "member_id":current_user.id,
+                "member_name":current_user.username
+            }
+            await manager.send_to_user(member.user_id,payload)
+        return leaving_user
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,

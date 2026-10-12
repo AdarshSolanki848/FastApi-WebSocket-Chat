@@ -33,7 +33,6 @@ async def handle_send_message(websocket:WebSocket,manager:ConnectionManager,data
     finally:
         db.close()
 
-
 async def handle_typing(websocket:WebSocket,manager:ConnectionManager,data:dict):
     conversation_id=data.get("conversation_id")
     sender_id=manager.get_user_id(websocket)
@@ -53,7 +52,6 @@ async def handle_typing(websocket:WebSocket,manager:ConnectionManager,data:dict)
             await manager.send_to_user(member.user_id,payload)
     finally:
         db.close()
-
 
 async def handle_stop_typing(websocket:WebSocket,manager:ConnectionManager,data:dict):
     conversation_id=data.get("conversation_id")
