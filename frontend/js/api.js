@@ -158,3 +158,16 @@ async function updateGroupName(token,conversation_id,name) {
         })
     });
 }
+
+async function callMakeAdmin(token,conversation_id,member_id) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/admins`,{
+        method:"POST",
+        headers:{
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            user_id:member_id
+        })
+    });
+}

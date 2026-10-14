@@ -353,15 +353,14 @@ def make_admin(db:Session,conversation_id:int,requester_id:int,member_id:int):
         raise ValueError("Conversation does not exist.")
     if conversation.type==ConversationType.PRIVATE:
         raise ValueError("Cannot make admin in private conversation.")
-    
     if not is_member(db,conversation_id,requester_id):
         raise ValueError("Requester is not a member of conversation.")
-    
     if not is_admin(db,conversation_id,requester_id):
         raise ValueError("Only admins can promote other members.")
+    if is_admin(db,conversation_id,member_id):
+        raise ValueError(f"User {member_id} is already an admin of conversation.")
     if not get_user_by_id(db,member_id):
         raise ValueError(f"User {member_id} does not exist.")
-    
     if not is_member(db,conversation_id,member_id):
         raise ValueError(f"User {member_id} is not a member of conversation.")
     try:
@@ -372,9 +371,14 @@ def make_admin(db:Session,conversation_id:int,requester_id:int,member_id:int):
                     ConversationMember.user_id==member_id
                 )
             )
-        if membership.role==MemberRole.ADMIN:
-            raise ValueError(f"User {member_id} is already a admin of conversation.")
         membership.role=MemberRole.ADMIN
+        db.flush()
+        create_system_message(
+            db,
+            conversation_id,
+            f"{get_user_by_id(db,requester_id).username} made {get_user_by_id(db,member_id).username} an admin",
+            "made_admin"
+        )
         db.commit()
         db.refresh(membership)
         return membership

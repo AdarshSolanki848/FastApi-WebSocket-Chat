@@ -296,19 +296,32 @@ def get_available_users(
             )
 
 @router.post("/{conversation_id}/admins",response_model=ConversationMemberResponse)
-def make_admin(
+async def make_admin(
         request:MakeAdminRequest,
         conversation_id:int,
         db:Session=Depends(get_db),
         current_user:User=Depends(get_current_user)
     ):
     try:
+        conversation=crud.get_conversation_by_id(db,conversation_id)
+        conversation_members=crud.get_conversation_members(db,conversation_id)
         admin=crud.make_admin(
             db,
             conversation_id,
             current_user.id,
             request.user_id
         )
+        new_admin=crud.get_user_by_id(db,request.user_id)
+        for member in conversation_members:
+            payload={
+                "type":"made_admin",
+                "conversation":crud.build_conversation_list_item(db,conversation,member.user_id),
+                "member_id":new_admin.id,
+                "member_name":new_admin.username,
+                "promoted_by_id":current_user.id,
+                "promoted_by_name":current_user.username
+            }
+            await manager.send_to_user(member.user_id,payload)
         return admin
     except ValueError as e:
         raise HTTPException(

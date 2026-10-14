@@ -17,6 +17,8 @@ let availableUsers = [];
 let filteredAvailableUsers = [];
 let selectedMembersIds = new Set();
 
+let isGroupInfoModelOpen=false;
+
 const conversationList=document.getElementById("conversation-list");
 const messagesContainer=document.getElementById("messages-container");
 const messageInput=document.getElementById("message-input");
@@ -157,6 +159,9 @@ function handleSocketMessage(event) {
         case "group_name_changed":
             handleGroupNameChanged(data);
             break;
+        case "made_admin":
+            handleMadeAdmin(data);
+            break;
         case "error":
             alert(data.message);
             break;
@@ -208,7 +213,6 @@ function handleNewMessage(data) {
 }
 
 function handleTyping(data) {
-    console.log("Typing:", data);
     if (!currentConversation) return;
     if (data.conversation_id !== currentConversation.id)
         return;
@@ -271,7 +275,6 @@ function handleConversationCreated(data){
         return t2 - t1;
     });
     renderConversationList();
-
 }
 
 function handleMembersAdded(data) {
@@ -337,6 +340,19 @@ function handleGroupNameChanged(data){
         updateChatHeader(currentConversation);
         loadMessages(currentConversation.id);
     }
+    const message={
+        "conversation_id":data.conversation.id,
+        "content":data.conversation.last_message,
+        "created_at":data.conversation.last_message_time,
+    }
+    updateConversationPreview(message);
+}
+
+async function handleMadeAdmin(data){
+    if (currentConversation && currentConversation.id === data.conversation.id) {
+        loadMessages(currentConversation.id);
+    }
+    if(isGroupInfoModelOpen)await openGroupInfoModal();
     const message={
         "conversation_id":data.conversation.id,
         "content":data.conversation.last_message,
@@ -497,7 +513,23 @@ async function loadMessages(conversationId) {
 
 function renderMessages(){
     messagesContainer.innerHTML="";
+    let previousDate=null;
     messages.forEach(message=>{
+        const messageDate = new Date(message.created_at);
+        const currentDate = new Date(messageDate);
+        currentDate.setHours(0, 0, 0, 0);
+        const dateKey = currentDate.getTime();
+        if(dateKey!==previousDate){
+            const separator = document.createElement("div");
+            separator.className = "date-separator";
+            const label = document.createElement("span");
+            label.textContent = formatMessageDate(message.created_at);
+
+            separator.appendChild(label);
+            messagesContainer.appendChild(separator);
+            previousDate=dateKey;
+        }
+
         const element=createMessageElement(message);
         messagesContainer.appendChild(element);
     });
@@ -606,6 +638,29 @@ function formatMessageTime(timestamp) {
         hour: "2-digit",
         minute: "2-digit"
     });
+}
+
+function formatMessageDate(dateString){
+    const messageDate=new Date(dateString);
+    const today=new Date();
+    const yesterday=new Date();
+    today.setHours(0,0,0,0);
+    yesterday.setDate(yesterday.getDate()-1);
+    yesterday.setHours(0,0,0,0);
+    const date=new Date(messageDate);
+    date.setHours(0,0,0,0);
+    if (date.getTime() === today.getTime()) {
+        return "Today";
+    }
+    if (date.getTime() === yesterday.getTime()) {
+        return "Yesterday";
+    }
+    return messageDate.toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    });
+
 }
 
 function sendMessage() {
@@ -850,6 +905,7 @@ async function openAddMembersModal(){
     updateAddMembersButton();
     addMembersModal.classList.remove("hidden");
 }
+
 function closeAddMembersModal(){
     addMembersModal.classList.add("hidden");
     availableUsers=[];
@@ -906,6 +962,7 @@ async function addNewMembers() {
 async function openGroupInfoModal() {
     if (!currentConversation) return;
     if (currentConversation.type === "private") return;
+    isGroupInfoModelOpen=true;
     const response=await getConversationMembers(token,currentConversation.id);
     if(!response.ok){
         alert("Failed to load group members.");
@@ -971,15 +1028,26 @@ async function openGroupInfoModal() {
         const trashIcon = document.createElement("i");
         trashIcon.setAttribute("data-lucide", "trash-2");
         removeButton.appendChild(trashIcon);
-
         removeButton.title = "Remove member";
 
         removeButton.addEventListener("click", () => {
             removeMemberFromGroup(member);
         });
 
+
+        const promoteButton = document.createElement("button");
+        promoteButton.classList.add("promote-member-btn");
+        const promoteIcon = document.createElement("i");
+        promoteIcon.setAttribute("data-lucide", "shield-check");
+        promoteButton.appendChild(promoteIcon);
+        promoteButton.title = "Make admin";
+        promoteButton.addEventListener("click", () => {
+            makeAdmin(member);
+        });
+            
         memberItem.appendChild(avatar);
         memberItem.appendChild(details);
+        if(member.role==="member")memberItem.appendChild(promoteButton);
         memberItem.appendChild(removeButton);
 
         membersList.appendChild(memberItem);
@@ -996,6 +1064,7 @@ async function openGroupInfoModal() {
 function closeGroupInfoModal() {
     groupInfoModal.classList.add("hidden");
     groupInfoContent.innerHTML="";
+    isGroupInfoModelOpen=false;
 }
 
 async function removeMemberFromGroup(member) {
@@ -1070,6 +1139,7 @@ function openChatMenuModal(){
         groupInfoOption.classList.toggle("hidden", isPrivate);
         renameGroupOption.classList.toggle("hidden", isPrivate);
         addMembersOption.classList.toggle("hidden", isPrivate);
+        leaveGroupOption.classList.toggle("hidden", isPrivate);
     }
 }
 
@@ -1079,4 +1149,24 @@ function closeChatMenuModal(){
     groupInfoOption.classList.remove("hidden");
     renameGroupOption.classList.remove("hidden");
     addMembersOption.classList.remove("hidden");
+    leaveGroupOption.classList.remove("hidden");
+}
+
+async function makeAdmin(member){
+    const confirmation=confirm(`Do you want to promote ${member.username} to admin.`);
+    if(!confirmation)return;
+    try{
+
+        const response= await callMakeAdmin(token,currentConversation.id,member.user_id);
+        if(!response.ok){
+            const error = await response.json();
+            alert(error.detail || "Failed to promote member.");
+            openGroupInfoModal();
+            return;
+        }
+    }
+    catch(error){
+        console.error("Error promoting member:", error);
+        alert("Something went wrong while promoting the member.");
+    }
 }
