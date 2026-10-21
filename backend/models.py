@@ -1,5 +1,5 @@
 from datetime import datetime,UTC
-from sqlalchemy import DateTime,ForeignKey,String,Enum
+from sqlalchemy import DateTime,ForeignKey,String,Enum,Boolean
 from sqlalchemy.orm import Mapped,mapped_column,relationship
 from database import Base
 from enums import MemberRole,ConversationType
@@ -34,6 +34,11 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin"
+    )
+    hidden_messages: Mapped[list["HiddenMessages"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
 
 class Conversation(Base):
@@ -133,6 +138,16 @@ class Message(Base):
         cascade="all, delete-orphan",
         lazy="selectin"
     )
+    hidden_by: Mapped[list["HiddenMessages"]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    is_edited: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
 
 class MessageRead(Base):
     __tablename__="message_reads"
@@ -158,4 +173,26 @@ class MessageRead(Base):
     user: Mapped["User"] = relationship(
         back_populates="message_reads",
         lazy="selectin"
+    )
+
+class HiddenMessages(Base):
+    __tablename__="hidden_messages"
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    hidden_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+    user:Mapped["User"]=relationship(
+        back_populates="hidden_messages"
+    )
+    message: Mapped["Message"] = relationship(
+        back_populates="hidden_by"
     )

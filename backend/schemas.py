@@ -50,9 +50,17 @@ class MessageResponse(BaseModel):
     message_type: str
     system_action: str | None
     created_at: datetime
+    is_edited:bool
     read_by: list[ReadReceiptResponse]
     model_config = ConfigDict(from_attributes=True)
 
+class HiddenMessageResponse(BaseModel):
+    user_id: int
+    message_id: int
+    hidden_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+    
 class ConversationMemberResponse(BaseModel):
     conversation_id: int
     user_id: int
@@ -87,3 +95,6 @@ class ConversationListItem(BaseModel):
 
 class UpdateGroupNameRequest(BaseModel):
     name:str
+class EditMessageRequest(BaseModel):
+    content:str
+    model_config = ConfigDict(str_strip_whitespace=True)

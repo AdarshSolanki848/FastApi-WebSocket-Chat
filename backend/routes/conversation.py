@@ -18,7 +18,9 @@ from schemas import (
     ReadReceiptResponse,
     UserResponse,
     ConversationMemberInfoResponse,
-    UpdateGroupNameRequest
+    UpdateGroupNameRequest,
+    HiddenMessageResponse,
+    EditMessageRequest
 )
 
 router=APIRouter(prefix="/conversations",tags=["Conversations"])
@@ -85,8 +87,7 @@ def get_user_conversations(
         current_user.id
     )
     return conversations
-
-    
+  
 @router.get("/{conversation_id}",response_model=ConversationResponse)
 def get_conversation(conversation_id:int,
                      db:Session=Depends(get_db),
@@ -172,6 +173,7 @@ def get_conversation_messages(conversation_id:int,
                 message_type=message.message_type,
                 system_action=message.system_action,
                 created_at=message.created_at,
+                is_edited=message.is_edited,
                 read_by=[
                     ReadReceiptResponse(
                         user_id=receipt.user.id,
@@ -218,7 +220,88 @@ def create_messages(
             status_code=400,
             detail=str(e)
         )
-      
+
+@router.delete("/{conversation_id}/messages/{message_id}/delete_for_me",response_model=HiddenMessageResponse)
+async def delete_for_me(
+    conversation_id:int,
+    message_id:int,
+    db:Session=Depends(get_db),
+    current_user:User=Depends(get_current_user)
+    ):
+    message=crud.get_message_by_id(db,message_id)
+    if not message:
+        raise HTTPException(
+            status_code=404,
+            detail="Message does not exist."
+        )
+    if message.conversation_id != conversation_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Message does not belong to this conversation."
+        )
+    try:
+        hidden_message = crud.delete_for_me(db, message_id, current_user.id)
+        conversation = crud.get_conversation_by_id(db, conversation_id)
+
+        payload = {
+            "type": "message_deleted",
+            "scope": "me",
+            "conversation": crud.build_conversation_list_item(db,conversation,current_user.id),
+            "message_id": message_id,
+            "deleted_by": current_user.id
+        }
+        
+        await manager.send_to_user(current_user.id,payload)
+        return hidden_message
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/{conversation_id}/messages/{message_id}/delete_for_everyone")
+async def delete_for_everyone(
+    conversation_id:int,
+    message_id:int,
+    db:Session=Depends(get_db),
+    current_user:User=Depends(get_current_user)
+    ):
+    message=crud.get_message_by_id(db,message_id)
+    if not message:
+        raise HTTPException(
+            status_code=404,
+            detail="Message does not exist."
+        )
+    if message.conversation_id != conversation_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Message does not belong to this conversation."
+        )
+    if message.sender_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only delete your own messages."
+        )
+    if message.message_type == "system" or message.sender_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="System messages cannot be deleted."
+        )
+    try:
+        message=crud.delete_message(db,message_id)
+        conversation=crud.get_conversation_by_id(db,conversation_id)
+        members=crud.get_conversation_members(db,conversation_id)
+        for member in members:
+            payload = {
+                "type": "message_deleted",
+                "scope": "everyone",
+                "conversation": crud.build_conversation_list_item(db,conversation,member.user_id),
+                "message_id": message_id,
+                "deleted_by": current_user.id
+            }
+            await manager.send_to_user(member.user_id,payload)
+        return {"detail": "Message deleted for everyone."}
+    except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/{conversation_id}/members",response_model=list[ConversationMemberResponse])
 async def add_members(
         request:AddMembersRequest,
@@ -295,7 +378,7 @@ def get_available_users(
                 detail=str(e)
             )
 
-@router.post("/{conversation_id}/admins",response_model=ConversationMemberResponse)
+@router.post("/{conversation_id}/make_admins",response_model=ConversationMemberResponse)
 async def make_admin(
         request:MakeAdminRequest,
         conversation_id:int,
@@ -320,6 +403,40 @@ async def make_admin(
                 "member_name":new_admin.username,
                 "promoted_by_id":current_user.id,
                 "promoted_by_name":current_user.username
+            }
+            await manager.send_to_user(member.user_id,payload)
+        return admin
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+@router.post("/{conversation_id}/demote_admins",response_model=ConversationMemberResponse)
+async def demote_admin(
+        request:MakeAdminRequest,
+        conversation_id:int,
+        db:Session=Depends(get_db),
+        current_user:User=Depends(get_current_user)
+    ):
+    try:
+        conversation=crud.get_conversation_by_id(db,conversation_id)
+        conversation_members=crud.get_conversation_members(db,conversation_id)
+        admin=crud.demote_admin(
+            db,
+            conversation_id,
+            current_user.id,
+            request.user_id
+        )
+        old_admin=crud.get_user_by_id(db,request.user_id)
+        for member in conversation_members:
+            payload={
+                "type":"demoted_admin",
+                "conversation":crud.build_conversation_list_item(db,conversation,member.user_id),
+                "member_id":old_admin.id,
+                "member_name":old_admin.username,
+                "demoted_by_id":current_user.id,
+                "demoted_by_name":current_user.username
             }
             await manager.send_to_user(member.user_id,payload)
         return admin
@@ -425,3 +542,65 @@ async def update_group_name(
             detail=str(e)
         )
 
+@router.patch("/{conversation_id}/messages/{message_id}/edit_message",response_model=MessageResponse)
+async def edit_message(
+    request:EditMessageRequest,
+    conversation_id:int,
+    message_id:int,
+    db:Session=Depends(get_db),
+    current_user:User=Depends(get_current_user)
+    ):
+    message=crud.get_message_by_id(db,message_id)
+    if not message:
+        raise HTTPException(
+            status_code=404,
+            detail="Message does not exist."
+        )
+    if message.conversation_id != conversation_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Message does not belong to this conversation."
+        )
+    if message.sender_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only edit your own messages."
+        )
+    if message.message_type == "system" or message.sender_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="System messages cannot be edited."
+        )
+    try:
+        message=crud.edit_message(db,message_id,request.content)
+        conversation=crud.get_conversation_by_id(db,conversation_id)
+        members=crud.get_conversation_members(db,conversation_id)
+        for member in members:
+            payload = {
+                "type": "message_edited",
+                "conversation": crud.build_conversation_list_item(db,conversation,member.user_id),
+                "message_id": message_id,
+                "edited_by": current_user.id
+            }
+            await manager.send_to_user(member.user_id,payload)
+        receipts = crud.get_message_read_receipts(db, message.id)
+        return MessageResponse(
+            id=message.id,
+            conversation_id=message.conversation_id,
+            sender_id=message.sender_id,
+            content=message.content,
+            message_type=message.message_type,
+            system_action=message.system_action,
+            created_at=message.created_at,
+            is_edited=message.is_edited,
+            read_by=[
+                ReadReceiptResponse(
+                    user_id=receipt.user.id,
+                    username=receipt.user.username,
+                    read_at=receipt.read_at
+                )
+                for receipt in receipts
+            ]
+        )
+    except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))

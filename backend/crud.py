@@ -6,6 +6,7 @@ from models import (
     ConversationMember,
     Message,
     MessageRead,
+    HiddenMessages
 )
 from enums import ConversationType, MemberRole
 
@@ -53,8 +54,12 @@ def build_conversation_list_item(db:Session,conversation:Conversation,user_id:in
             if member.user_id!=user_id:
                 other_member=member
                 break
-        display_name=other_member.user.username
-    last_message=get_last_message(db,conversation.id)
+        display_name=(
+            other_member.user.username
+            if other_member and other_member.user
+            else "Unknown User"
+        )
+    last_message=get_last_message(db,conversation.id,user_id)
     if last_message:
         last_message_content=last_message.content
         last_message_time=last_message.created_at.isoformat()
@@ -66,7 +71,7 @@ def build_conversation_list_item(db:Session,conversation:Conversation,user_id:in
             "id": conversation.id,
             "type": conversation.type,
             "display_name": display_name,
-            "avatar":display_name[0],
+            "avatar":display_name[0].upper() if display_name else "?",
             "last_message": last_message_content,
             "last_message_time": last_message_time,
             "unread_count": unread_count,
@@ -385,7 +390,48 @@ def make_admin(db:Session,conversation_id:int,requester_id:int,member_id:int):
     except Exception:
         db.rollback()
         raise
-    
+
+def demote_admin(db:Session,conversation_id:int,requester_id:int,member_id:int):
+    conversation=get_conversation_by_id(db,conversation_id)
+    if not conversation:
+        raise ValueError("Conversation does not exist.")
+    if conversation.type==ConversationType.PRIVATE:
+        raise ValueError("Cannot demote admin in private conversation.")
+    if requester_id == member_id:
+        raise ValueError("Admins cannot demote themselves.")
+    if not is_member(db,conversation_id,requester_id):
+        raise ValueError("Requester is not a member of conversation.")
+    if not get_user_by_id(db,member_id):
+        raise ValueError(f"User {member_id} does not exist.")
+    if not is_member(db,conversation_id,member_id):
+        raise ValueError(f"User {member_id} is not a member of conversation.")
+    if not is_admin(db,conversation_id,requester_id):
+        raise ValueError("Only admins can demote other admins.")
+    if not is_admin(db,conversation_id,member_id):
+        raise ValueError(f"User {member_id} is not an admin of conversation.")
+    try:
+        membership=db.scalar(
+                select(ConversationMember)
+                .where(
+                    ConversationMember.conversation_id==conversation_id,
+                    ConversationMember.user_id==member_id
+                )
+            )
+        membership.role=MemberRole.MEMBER
+        db.flush()
+        create_system_message(
+            db,
+            conversation_id,
+            f"{get_user_by_id(db,requester_id).username} demoted {get_user_by_id(db,member_id).username} from an admin",
+            "demoted_admin"
+        )
+        db.commit()
+        db.refresh(membership)
+        return membership
+    except Exception:
+        db.rollback()
+        raise
+
 def get_member_count(db:Session, conversation_id:int):
     query=(
         select(func.count())
@@ -495,7 +541,6 @@ def leave_group(db:Session,conversation_id:int,user_id:int):
         db.rollback()
         raise
 
-
 def get_conversation_members(db:Session,conversation_id:int):
     query=(
         select(ConversationMember)
@@ -568,14 +613,22 @@ def get_message_by_id(db:Session,message_id:int):
     )
 
 def get_conversation_messages(db:Session,conversation_id:int,user_id:int):
+    hidden_messages=(
+        select(HiddenMessages.message_id)
+        .where(
+            HiddenMessages.message_id==Message.id,
+            HiddenMessages.user_id==user_id
+        )
+        .exists()
+    )
     messages=db.scalars(
         select(Message)
         .where(
-            Message.conversation_id==conversation_id
+            Message.conversation_id==conversation_id,
+            ~hidden_messages
         )
         .order_by(Message.created_at)
     ).all()
-
     return messages
 
 def delete_message(db:Session,message_id:int):
@@ -586,6 +639,31 @@ def delete_message(db:Session,message_id:int):
         db.delete(message)
         db.commit()
         return message
+    except Exception:
+        db.rollback()
+        raise
+
+def delete_for_me(db:Session,message_id:int,user_id:int):
+    message=get_message_by_id(db,message_id)
+    if not message:
+        raise ValueError("Message does not exist.")
+    if not is_member(db, message.conversation_id, user_id):
+        raise ValueError("User is not a member of this conversation.")
+    existing = db.get(HiddenMessages, (user_id, message_id))
+
+    if existing:
+        return existing
+    try:
+        hidden_message = HiddenMessages(
+            user_id=user_id,
+            message_id=message_id
+        )
+
+        db.add(hidden_message)
+        db.commit()
+        db.refresh(hidden_message)
+
+        return hidden_message
     except Exception:
         db.rollback()
         raise
@@ -613,6 +691,14 @@ def mark_conversation_read(db:Session,conversation_id:int,user_id:int):
         raise
 
 def get_unread_message(db:Session,conversation_id:int,user_id:int):
+    hidden_messages = (
+        select(HiddenMessages.message_id)
+        .where(
+            HiddenMessages.message_id == Message.id,
+            HiddenMessages.user_id == user_id
+        )
+        .exists()
+    )
     return db.scalars(
         select(Message)
         .where(
@@ -625,11 +711,20 @@ def get_unread_message(db:Session,conversation_id:int,user_id:int):
             .where(
                 MessageRead.message_id==Message.id,
                 MessageRead.user_id==user_id
-            )
+            ),
+            ~hidden_messages
         )
     ).all()
 
 def get_unread_message_count(db:Session,conversation_id:int,user_id:int):
+    hidden_messages = (
+        select(HiddenMessages.message_id)
+        .where(
+            HiddenMessages.message_id == Message.id,
+            HiddenMessages.user_id == user_id
+        )
+        .exists()
+    )
     return db.scalar(
             select(func.count())
             .select_from(Message)
@@ -642,15 +737,25 @@ def get_unread_message_count(db:Session,conversation_id:int,user_id:int):
                 ~exists().where(
                     MessageRead.message_id == Message.id,
                     MessageRead.user_id == user_id
-                )
+                ),
+                ~hidden_messages
             )
         )
 
-def get_last_message(db:Session,conversation_id:int):
+def get_last_message(db:Session,conversation_id:int,user_id:int):
+    hidden_messages=(
+        select(HiddenMessages.message_id)
+        .where(
+            HiddenMessages.message_id==Message.id,
+            HiddenMessages.user_id==user_id
+        )
+        .exists()
+    )
     return db.scalar(
         select(Message)
         .where(
-            Message.conversation_id == conversation_id
+            Message.conversation_id == conversation_id,
+            ~hidden_messages
         )
         .order_by(Message.created_at.desc())
         .limit(1)
@@ -663,3 +768,22 @@ def get_message_read_receipts(db:Session,message_id:int):
             MessageRead.message_id==message_id
         )
     ).all()
+
+def edit_message(db:Session,message_id:int,content:str):
+    message=get_message_by_id(db,message_id)
+    if not message:
+         raise ValueError("Message does not exist.")
+    content = content.strip()
+
+    if not content:
+        raise ValueError("Message cannot be empty.")
+    try:
+        message.content = content
+        message.is_edited = True
+
+        db.commit()
+        db.refresh(message)
+        return message
+    except Exception:
+        db.rollback()
+        raise

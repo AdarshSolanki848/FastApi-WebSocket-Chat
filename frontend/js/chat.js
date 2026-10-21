@@ -88,6 +88,10 @@ document.addEventListener("click", (event) => {
         closeChatMenuModal();
         // }
     }
+    if (!event.target.closest(".message-menu-button") &&!event.target.closest(".message-options-menu")) 
+    {
+        closeMessageMenu();
+    }
 });
 newConversationButton.addEventListener("click",openNewConversationModal);
 cancelNewChatButton.addEventListener("click", closeNewConversationModal);
@@ -160,7 +164,16 @@ function handleSocketMessage(event) {
             handleGroupNameChanged(data);
             break;
         case "made_admin":
-            handleMadeAdmin(data);
+            handleAdminUpdate(data);
+            break;
+        case "demoted_admin":
+            handleAdminUpdate(data);
+            break;
+        case "message_deleted":
+            handleMessageUpdates(data);
+            break;
+        case "message_edited":
+            handleMessageUpdates(data);
             break;
         case "error":
             alert(data.message);
@@ -348,11 +361,23 @@ function handleGroupNameChanged(data){
     updateConversationPreview(message);
 }
 
-async function handleMadeAdmin(data){
+async function handleAdminUpdate(data){
     if (currentConversation && currentConversation.id === data.conversation.id) {
         loadMessages(currentConversation.id);
     }
     if(isGroupInfoModelOpen)await openGroupInfoModal();
+    const message={
+        "conversation_id":data.conversation.id,
+        "content":data.conversation.last_message,
+        "created_at":data.conversation.last_message_time,
+    }
+    updateConversationPreview(message);
+}
+
+async function handleMessageUpdates(data) {
+    if (currentConversation && currentConversation.id === data.conversation.id) {
+        loadMessages(currentConversation.id);
+    }
     const message={
         "conversation_id":data.conversation.id,
         "content":data.conversation.last_message,
@@ -565,6 +590,12 @@ function createMessageElement(message){
     content.textContent=message.content;
     time.textContent=formatMessageTime(message.created_at);
     meta.appendChild(time);
+    if (message.is_edited) {
+        const editedLabel = document.createElement("span");
+        editedLabel.className = "edited-label";
+        editedLabel.textContent = "edited";
+        meta.appendChild(editedLabel);
+    }
     if(message.sender_id==currentUser.id){
         row.classList.add("outgoing");
         if (message.pending) {
@@ -590,6 +621,59 @@ function createMessageElement(message){
     }
     bubble.appendChild(content);
     bubble.appendChild(meta);
+
+    const menuButton=document.createElement("button")
+    menuButton.className = "message-menu-button";
+    menuButton.type = "button";
+    menuButton.setAttribute("aria-label", "Message options");
+    const menuIcon=document.createElement("i");
+    menuIcon.className = "message-menu-icon";
+    menuIcon.setAttribute("data-lucide", "chevron-down");
+    menuButton.appendChild(menuIcon);
+
+    const menu = document.createElement("div");
+    menu.className = "message-options-menu hidden";
+
+    const deleteForMeButton = document.createElement("button");
+    deleteForMeButton.className = "delete-message-button";
+    deleteForMeButton.type = "button";
+    deleteForMeButton.textContent = "Delete for me";
+
+    const deleteForEveryoneButton = document.createElement("button");
+    deleteForEveryoneButton.className = "delete-message-button";
+    deleteForEveryoneButton.type = "button";
+    deleteForEveryoneButton.textContent = "Delete for everyone";
+
+    const editButton = document.createElement("button");
+    editButton.className = "edit-message-button";
+    editButton.textContent = "Edit";
+
+    
+    menuButton.addEventListener("click", function (event) {
+        event.stopPropagation();
+
+        if (menu.classList.contains("hidden")) {
+            openMessageMenu(menu);
+        } else {
+            closeMessageMenu();
+        }
+    });
+
+    editButton.addEventListener("click",() => {
+        UpdateMessage(message);
+    });
+    deleteForMeButton.addEventListener("click",() => {
+        deleteMessageForMyself(message.id);
+    });
+    deleteForEveryoneButton.addEventListener("click",() => {
+        deleteMessageForAll(message.id);
+    });
+    
+    menu.appendChild(editButton);
+    menu.appendChild(deleteForMeButton);
+    menu.appendChild(deleteForEveryoneButton);
+    bubble.appendChild(menuButton);
+    bubble.appendChild(menu);
     row.appendChild(bubble);
     return row;
 }
@@ -1001,7 +1085,9 @@ async function openGroupInfoModal() {
     membersSection.appendChild(membersTitle);
     membersSection.appendChild(membersList);
     groupInfoContent.appendChild(membersSection);
-
+    const currentMember = members.find(
+        member => member.user_id === currentUser.id
+    );
     members.forEach(member => {
         const memberItem = document.createElement("div");
         memberItem.classList.add("member-item");
@@ -1038,16 +1124,39 @@ async function openGroupInfoModal() {
         const promoteButton = document.createElement("button");
         promoteButton.classList.add("promote-member-btn");
         const promoteIcon = document.createElement("i");
-        promoteIcon.setAttribute("data-lucide", "shield-check");
+        promoteIcon.setAttribute("data-lucide", "arrow-up-circle");
         promoteButton.appendChild(promoteIcon);
         promoteButton.title = "Make admin";
         promoteButton.addEventListener("click", () => {
             makeAdmin(member);
         });
             
+        
+        const demoteButton = document.createElement("button");
+        demoteButton.classList.add("demote-member-btn");
+
+        const demoteIcon = document.createElement("i");
+        demoteIcon.setAttribute("data-lucide", "arrow-down-circle");
+
+        demoteButton.appendChild(demoteIcon);
+        demoteButton.title = "Demote admin";
+
+        demoteButton.addEventListener("click", () => {
+            demoteAdmin(member);
+        });
+        
+        // console.log(currentUser);
+        if(currentMember.role==="member" || currentMember.user_id===member.user_id){
+            promoteButton.classList.add("hidden");
+            demoteButton.classList.add("hidden");
+            removeButton.classList.add("hidden");
+        }
+        else if( member.role==="member")demoteButton.classList.add("hidden");
+        else promoteButton.classList.add("hidden");
         memberItem.appendChild(avatar);
         memberItem.appendChild(details);
-        if(member.role==="member")memberItem.appendChild(promoteButton);
+        memberItem.appendChild(promoteButton);
+        memberItem.appendChild(demoteButton);
         memberItem.appendChild(removeButton);
 
         membersList.appendChild(memberItem);
@@ -1168,5 +1277,115 @@ async function makeAdmin(member){
     catch(error){
         console.error("Error promoting member:", error);
         alert("Something went wrong while promoting the member.");
+    }
+}
+
+async function demoteAdmin(member){
+    const confirmation=confirm(`Do you want to demote ${member.username} from admin.`);
+    if(!confirmation)return;
+    try{
+
+        const response= await callDemoteAdmin(token,currentConversation.id,member.user_id);
+        if(!response.ok){
+            const error = await response.json();
+            alert(error.detail || "Failed to demote member.");
+            openGroupInfoModal();
+            return;
+        }
+    }
+    catch(error){
+        console.error("Error demoting member:", error);
+        alert("Something went wrong while demoting the member.");
+    }
+}
+
+function closeMessageMenu() {
+    document.querySelectorAll(".message-options-menu").forEach(menu => {
+        menu.classList.add("hidden");
+    });
+}
+
+function openMessageMenu(menu) {
+    closeMessageMenu();
+    menu.classList.remove("hidden");
+}
+
+async function deleteMessageForMyself(message_id) {
+    const confirmation=confirm(`Do you want to delete this message?`);
+    if(!confirmation)return;
+    try{
+        const response= await deleteMessageForMyself(token,currentConversation.id,message_id);
+        if(!response.ok){
+            const error = await response.json();
+            alert(error.detail || "Failed to delete message.");
+            return;
+        }
+        closeMessageMenu();
+    }
+    catch(error){
+        console.error("Error deleting the message:", error);
+        alert("Something went wrong while deleting the message.");
+    }
+}
+
+async function deleteMessageForAll(message_id) {
+    const confirmation=confirm(`Do you want to delete this message?`);
+    if(!confirmation)return;
+    try{
+        const response= await deleteMessageForEveryone(token,currentConversation.id,message_id);
+        if(!response.ok){
+            const error = await response.json();
+            alert(error.detail || "Failed to delete message.");
+            return;
+        }
+        closeMessageMenu();
+    }
+    catch(error){
+        console.error("Error deleting the message:", error);
+        alert("Something went wrong while deleting the message.");
+    }
+}
+
+async function UpdateMessage(message){
+    const newContent=prompt("Edit your message:",message.content);
+    if (newContent === null) return;
+    const content=newContent.trim();
+    if (!content) {
+        alert("Message cannot be empty.");
+        return;
+    }
+    if (content === message.content) return;
+    try {
+        const response = await editMessageRequest(
+            token,
+            currentConversation.id,
+            message.id,
+            content
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            alert(error.detail || "Failed to edit message.");
+            return;
+        }
+        const updatedMessage = await response.json();
+        const messageElement = document.querySelector(
+            `[data-message-id="${message.id}"]`
+        );
+
+        if (messageElement) {
+            const contentElement =
+                messageElement.querySelector(".message-content");
+
+            if (contentElement) {
+                contentElement.textContent = updatedMessage.content;
+            }
+        }
+
+        closeMessageMenu();
+    }
+    catch(error){
+        console.error("Error editing message:", error);
+        alert("Something went wrong while editing the message.");
     }
 }

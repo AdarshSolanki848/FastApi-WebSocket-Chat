@@ -36,6 +36,7 @@ async function getCurrentUser(token) {
     });
     return response;
 }
+
 async function getUserConversations(token) {
     return await fetch(`${API_BASE}/conversations`,{
         method:"GET",
@@ -44,6 +45,7 @@ async function getUserConversations(token) {
         }
     });
 }
+
 async function getConversationMessages(token,conversationId) {
     return await fetch(`${API_BASE}/conversations/${conversationId}/messages`,{
         method:"GET",
@@ -109,6 +111,7 @@ async function addMembers(token,conversation_id,memberIds) {
         })
     });
 }
+
 async function getAvailableUsers(token,conversation_id) {
     return fetch(`${API_BASE}/conversations/${conversation_id}/availableusers`, {
         method: "GET",
@@ -160,7 +163,7 @@ async function updateGroupName(token,conversation_id,name) {
 }
 
 async function callMakeAdmin(token,conversation_id,member_id) {
-    return fetch(`${API_BASE}/conversations/${conversation_id}/admins`,{
+    return fetch(`${API_BASE}/conversations/${conversation_id}/make_admins`,{
         method:"POST",
         headers:{
             "Content-Type": "application/json",
@@ -169,5 +172,48 @@ async function callMakeAdmin(token,conversation_id,member_id) {
         body: JSON.stringify({
             user_id:member_id
         })
+    });
+}
+
+async function callDemoteAdmin(token,conversation_id,member_id) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/demote_admins`,{
+        method:"POST",
+        headers:{
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            user_id:member_id
+        })
+    });
+}
+
+async function deleteMessageForMe(token,conversation_id,message_id) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/messages/${message_id}/delete_for_me`,{
+        method:"DELETE",
+        headers:{
+            "Authorization": `Bearer ${token}`
+        }   
+    });
+}
+async function deleteMessageForEveryone(token,conversation_id,message_id) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/messages/${message_id}/delete_for_everyone`,{
+        method:"DELETE",
+        headers:{
+            "Authorization": `Bearer ${token}`
+        }   
+    });
+}
+
+async function editMessageRequest(token,conversation_id,message_id,content) {
+    return fetch(`${API_BASE}/conversations/${conversation_id}/messages/${message_id}/edit_message`,{
+        method:"PATCH",
+        headers:{
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            content:content
+        })   
     });
 }
