@@ -27,15 +27,12 @@ LoginForm.addEventListener("submit",async(event)=>{
             return;
         }
         sessionStorage.setItem(TOKEN_KEY,data.access_token);
-        console.log(sessionStorage);
-        console.log(sessionStorage.getItem(TOKEN_KEY));
         message.textContent="Sign In Successfully! Redirecting...";
         setTimeout(()=>{
             window.location.href="chat.html";
         },1500);
     }
     catch(error){
-        console.error(error)
         message.textContent="Something went wrong. Please try again.";
     }
     finally{

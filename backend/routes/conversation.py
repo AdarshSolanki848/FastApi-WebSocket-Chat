@@ -27,9 +27,9 @@ from pathlib import Path
 from uuid import uuid4
 from fastapi import UploadFile,File
 from PIL import Image
+from storage import BUCKET_NAME, storage
+from botocore.exceptions import ClientError
 
-UPLOAD_DIR = Path("uploads/images")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 ALLOWED_FORMATS = {
     "JPEG": ".jpg",
@@ -258,7 +258,9 @@ async def upload_image(
             status_code=400,
             detail="Only JPEG, PNG, and WebP images are allowed."
         )
-    file_path=None
+    # file_path=None
+    object_key = None
+    uploaded = False
     try:
         image_bytes=file.file.read(MAX_IMAGE_SIZE+1)
         if not image_bytes:
@@ -280,16 +282,27 @@ async def upload_image(
                 status_code=400,
                 detail="Unsupported image format."
             )
-        filename = f"{uuid4().hex}{ALLOWED_FORMATS[image_format]}"
-        file_path = UPLOAD_DIR / filename
-        file_path.write_bytes(image_bytes)
-        image_url = f"/uploads/images/{filename}"
+        extention=ALLOWED_FORMATS[image_format]
+        filename = f"{uuid4().hex}{extention}"
+        object_key = f"images/{conversation_id}/{filename}"
+
+        storage.put_object(
+            Bucket=BUCKET_NAME,
+            Key=object_key,
+            Body=image_bytes,
+            ContentType=file.content_type,
+        )
+        uploaded = True
+
+        # file_path = UPLOAD_DIR / filename
+        # file_path.write_bytes(image_bytes)
+        # image_url = f"/uploads/images/{filename}"
 
         message = crud.create_image_message(
             db,
             conversation_id,
             current_user.id,
-            image_url,
+            object_key,
         )
         members=crud.get_conversation_members(db,conversation_id)
         payload = {
@@ -309,33 +322,107 @@ async def upload_image(
         return message
 
     except HTTPException:
-        if file_path and file_path.exists():
-            file_path.unlink()
+        if uploaded and object_key:
+            try:
+                storage.delete_object(
+                    Bucket=BUCKET_NAME,
+                    Key=object_key
+                )
+            except Exception:
+                pass
         raise
     except (Image.UnidentifiedImageError, OSError):
-        if file_path and file_path.exists():
-            file_path.unlink()
+        if uploaded and object_key:
+            try:
+                storage.delete_object(
+                    Bucket=BUCKET_NAME,
+                    Key=object_key
+                )
+            except Exception:
+                pass
         raise HTTPException(
             status_code=400,
             detail="Invalid or corrupted image file."
         )
     except ValueError as e:
-        if file_path and file_path.exists():
-            file_path.unlink()
+        if uploaded and object_key:
+            try:
+                storage.delete_object(
+                    Bucket=BUCKET_NAME,
+                    Key=object_key
+                )
+            except Exception:
+                pass
+
         raise HTTPException(
             status_code=400,
             detail=str(e)
         )
     except Exception:
-        if file_path and file_path.exists():
-            file_path.unlink()
+        if uploaded and object_key:
+            try:
+                storage.delete_object(
+                    Bucket=BUCKET_NAME,
+                    Key=object_key
+                )
+            except Exception:
+                pass
         raise HTTPException(
             status_code=500,
             detail="Failed to upload image."
         )
     finally:
-        file.file.close()
+        await file.close()
 
+@router.get("/{conversation_id}/images/{message_id}/url")
+def get_image_url(
+    conversation_id: int,
+    message_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    conversation = crud.get_conversation_by_id(db, conversation_id)
+
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation does not exist."
+        )
+
+    if not crud.is_member(db, conversation_id, current_user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="You are not a member of this conversation."
+        )
+
+    message = crud.get_message_by_id(db, message_id)
+
+    if (
+        not message
+        or message.conversation_id != conversation_id
+        or message.message_type != "image"
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="Image message does not exist."
+        )
+    try:
+        signed_url = storage.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": BUCKET_NAME,
+                "Key": message.content,
+            },
+            ExpiresIn=300,
+        )
+
+        return {"url": signed_url}
+
+    except ClientError:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not generate image URL."
+        )
 
 @router.delete("/{conversation_id}/messages/{message_id}/delete_for_me",response_model=HiddenMessageResponse)
 async def delete_for_me(

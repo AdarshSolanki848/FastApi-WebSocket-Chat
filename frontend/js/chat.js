@@ -261,7 +261,6 @@ function handleTyping(data) {
 }
 
 function handleStopTyping(data) {
-    // console.log("Stop Typing:", data);
     if (!currentConversation) return;
     if (data.conversation_id !== currentConversation.id)return;
     if (currentConversation.type === "group") {
@@ -273,7 +272,6 @@ function handleStopTyping(data) {
 }
 
 function handleMarkRead(data) {
-    // console.log("Read:", data);
     data.message_ids.forEach(messageId => {
         const message = messages.find(m => m.id === messageId);
         if (!message) return;
@@ -328,7 +326,7 @@ function handleMembersAdded(data) {
 
 async function handleMemberRemoved(data) {
     if(currentUser.id===data.member_id){
-        // console.log("This user was removed. Reloading conversations...");
+       
         await loadConversations();
         if(currentConversation && currentConversation.id===data.conversation.id){
             currentConversation = null;
@@ -414,16 +412,12 @@ async function handleMessageUpdates(data) {
 async function initialize() {
     // debugger;
     token=sessionStorage.getItem(TOKEN_KEY);
-    // console.log("Token:", token);
     if(!token){
-        // console.log("No token found");
         window.location.href = "login.html";
         return;
     }
     const response=await getCurrentUser(token);
-    // console.log("GET /auth/me status:", response.status);
     if(!response.ok){
-        // console.log(await response.text());
         sessionStorage.removeItem(TOKEN_KEY);
 
         window.location.href="login.html";
@@ -432,14 +426,13 @@ async function initialize() {
     currentUser=await response.json();
     username.textContent=currentUser.username;
     userAvatar.textContent=currentUser.username[0].toUpperCase();
-    // console.log(currentUser);
+
     const conversationResponse=await getUserConversations(token);
     if(!conversationResponse.ok){
         alert("Failed to load conversations.")
         return;
     }
     conversations=await conversationResponse.json();
-    // console.log(conversations);
     renderConversationList();
     connectWebSocket();
 }
@@ -518,7 +511,6 @@ function createConversationElement(conversation){
 async function openConversation(conversation){
     document.body.classList.add("mobile-chat-open");
     currentConversation=conversation;
-    // console.log(currentConversation);
     conversation.unread_count = 0;
     if(currentConversation.type==="private")addMembersButton.classList.add("hidden");
     else addMembersButton.classList.remove("hidden");
@@ -528,7 +520,7 @@ async function openConversation(conversation){
     updateChatHeader(conversation);
     showChatScreen();
     await loadMessages(conversation.id);
-    // console.log(conversation);
+
     websocket.send(JSON.stringify({
         type: "mark_read",
         conversation_id: conversation.id
@@ -565,10 +557,10 @@ async function loadMessages(conversationId) {
     renderMessages();
 }
 
-function renderMessages(){
+async function renderMessages(){
     messagesContainer.innerHTML="";
     let previousDate=null;
-    messages.forEach(message=>{
+    for (const message of messages) {
         const messageDate = new Date(message.created_at);
         const currentDate = new Date(messageDate);
         currentDate.setHours(0, 0, 0, 0);
@@ -584,14 +576,14 @@ function renderMessages(){
             previousDate=dateKey;
         }
 
-        const element=createMessageElement(message);
+        const element=await createMessageElement(message);
         messagesContainer.appendChild(element);
-    });
+    }
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     lucide.createIcons();
 }
 
-function createMessageElement(message){
+async function createMessageElement(message){
     if (message.message_type === "system") {
         const row = document.createElement("div");
         row.className = "system-message-row";
@@ -615,19 +607,35 @@ function createMessageElement(message){
     bubble.className="message-bubble";
     if (isImage) {
         content.className = "message-image";
-        content.src = message.content;
+        content.src = "";
         content.alt = "Shared image";
         content.loading = "lazy";
         content.width = 320;
         content.height = 240;
-        content.addEventListener("click", () => {
-            window.open(
-                content.src,
-                "_blank",
-                "noopener,noreferrer"
-            );
-        });
-    } else {
+        try{
+            const response=await getImageUrl(token,message.conversation_id,message.id);
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.detail || "Failed to load image.");
+            }
+
+            const data = await response.json();
+            content.src = data.url;
+            content.style.cursor = "pointer";
+            content.addEventListener("click", () => {
+                window.open(
+                    content.src,
+                    "_blank",
+                    "noopener,noreferrer"
+                );
+            });
+        }
+        catch (error) {
+            content.alt = "Unable to load image.";
+        }
+        
+    } 
+    else {
         content.className = "message-content";
         content.textContent = message.content;
     }
@@ -1017,7 +1025,6 @@ async function createConversation() {
 
     } 
     catch (error) {
-        console.error(error);
         alert("Failed to create conversation.");
     }
 }
@@ -1102,8 +1109,6 @@ async function openGroupInfoModal() {
         return;
     }
     const members = await response.json();
-    console.log(currentUser);
-    console.log(members);
     groupInfoContent.innerHTML="";
     const header=document.createElement("div");
     header.classList.add("group-info-header");
@@ -1194,7 +1199,6 @@ async function openGroupInfoModal() {
             demoteAdmin(member);
         });
         
-        // console.log(currentUser);
         if(currentMember.role==="member" || currentMember.user_id===member.user_id){
             promoteButton.classList.add("hidden");
             demoteButton.classList.add("hidden");
@@ -1211,9 +1215,7 @@ async function openGroupInfoModal() {
         membersList.appendChild(memberItem);
         lucide.createIcons();
     });
-    
 
-    // console.log(members);
 
     groupInfoModal.classList.remove("hidden");
     chatMenu.classList.add("hidden");
@@ -1242,7 +1244,6 @@ async function removeMemberFromGroup(member) {
 function openRenameGroupModal(){
     if (!currentConversation || currentConversation.type === "private") return;
     groupRenameInput.value = currentConversation.display_name || "";
-    // console.log(g)
     renameGroupModal.classList.remove("hidden");
     chatMenu.classList.add("hidden");
     groupRenameInput.focus();
@@ -1291,8 +1292,6 @@ async function leaveGroup() {
 function openChatMenuModal(){
     chatMenu.classList.toggle("hidden");
     if (currentConversation) {
-        console.log("Current conversation:", currentConversation);
-        console.log("Conversation type:", currentConversation.type);
         const isPrivate = currentConversation.type === "private";
         groupInfoOption.classList.toggle("hidden", isPrivate);
         renameGroupOption.classList.toggle("hidden", isPrivate);
@@ -1324,7 +1323,6 @@ async function makeAdmin(member){
         }
     }
     catch(error){
-        console.error("Error promoting member:", error);
         alert("Something went wrong while promoting the member.");
     }
 }
@@ -1343,7 +1341,6 @@ async function demoteAdmin(member){
         }
     }
     catch(error){
-        console.error("Error demoting member:", error);
         alert("Something went wrong while demoting the member.");
     }
 }
@@ -1372,7 +1369,6 @@ async function deleteMessageForMyself(message_id) {
         closeMessageMenu();
     }
     catch(error){
-        console.error("Error deleting the message:", error);
         alert("Something went wrong while deleting the message.");
     }
 }
@@ -1390,7 +1386,6 @@ async function deleteMessageForAll(message_id) {
         closeMessageMenu();
     }
     catch(error){
-        console.error("Error deleting the message:", error);
         alert("Something went wrong while deleting the message.");
     }
 }
@@ -1434,7 +1429,6 @@ async function UpdateMessage(message){
         closeMessageMenu();
     }
     catch(error){
-        console.error("Error editing message:", error);
         alert("Something went wrong while editing the message.");
     }
 }
@@ -1472,7 +1466,6 @@ async function uploadImage(){
         }
     }
     catch (error) {
-        console.error("Image upload error:", error);
         alert(error.message || "Could not upload image.");
     } 
     finally {

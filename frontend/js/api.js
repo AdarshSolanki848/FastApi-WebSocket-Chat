@@ -233,3 +233,15 @@ async function uploadImageRequest(token, conversation_id, file) {
         }
     );
 }
+
+async function getImageUrl(token,conversation_id,message_id) {
+    return fetch(
+         `${API_BASE}/conversations/${conversation_id}/images/${message_id}/url`,
+         {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+         }
+    );
+}

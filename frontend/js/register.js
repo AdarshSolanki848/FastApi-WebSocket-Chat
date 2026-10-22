@@ -31,14 +31,9 @@ registerForm.addEventListener("submit",async(event)=>{
             message.textContent=data.detail;
             return;
         }
-        
-        
-        window.location.href="login.html";
-        
-              
+        window.location.href="login.html";          
     }
     catch(error){
-        console.error(error);
         message.textContent="Something went wrong. Please try again.";
     }
     finally{
