@@ -25,6 +25,8 @@ async def handle_send_message(websocket:WebSocket,manager:ConnectionManager,data
             "conversation_id": message.conversation_id,
             "sender_id": message.sender_id,
             "content": message.content,
+            "message_type": message.message_type,
+            "is_edited": message.is_edited,
             "created_at": message.created_at.isoformat(),
             "read_by":[]
         }

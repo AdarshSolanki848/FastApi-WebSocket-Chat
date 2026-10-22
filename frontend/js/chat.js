@@ -64,6 +64,10 @@ const saveGroupRenameButton=document.getElementById("save-group-rename-btn");
 const groupRenameInput=document.getElementById("group-rename-input");
 
 const leaveGroupOption=document.getElementById("leave-group-option");
+const backToConversationButton=document.getElementById("back-to-conversations");
+
+const attachImageBtn = document.getElementById("attach-image-btn");
+const imageInput = document.getElementById("image-input");
 
 document.addEventListener("DOMContentLoaded", initialize);
 logoutButton.addEventListener("click",logout);
@@ -93,6 +97,11 @@ document.addEventListener("click", (event) => {
         closeMessageMenu();
     }
 });
+
+backToConversationButton.addEventListener("click", () => {
+        document.body.classList.remove("mobile-chat-open");
+    });
+    
 newConversationButton.addEventListener("click",openNewConversationModal);
 cancelNewChatButton.addEventListener("click", closeNewConversationModal);
 createConversationButton.addEventListener("click", createConversation);
@@ -111,6 +120,16 @@ cancelGroupRenameButton.addEventListener("click",closeRenameGroupModal);
 saveGroupRenameButton.addEventListener("click",renameGroup);
 
 leaveGroupOption.addEventListener('click',leaveGroup);
+
+attachImageBtn.addEventListener("click", () => {
+    if (!currentConversation) {
+        alert("Open a conversation first.");
+        return;
+    }
+
+    imageInput.click();
+});
+imageInput.addEventListener("change", uploadImage);
 
 function connectWebSocket() {
     websocket = new WebSocket(
@@ -190,22 +209,28 @@ function handleNewMessage(data) {
         conversation_id: data.conversation_id,
         sender_id: data.sender_id,
         content: data.content,
+        message_type: data.message_type || "user",
+        is_edited: data.is_edited || false,
         created_at: data.created_at,
         read_by:data.read_by
     };
     updateConversationPreview(message);
     if (!currentConversation) return;
-    if (data.conversation_id !== currentConversation.id)
-        return;
+    if (data.conversation_id !== currentConversation.id)return;
     const pendingMessage=messages.find(m=>m.id===data.temp_id);
     if(pendingMessage){
         pendingMessage.id=data.message_id,
         pendingMessage.created_at = data.created_at;
+        pendingMessage.message_type = data.message_type || "user";
+        pendingMessage.is_edited = data.is_edited || false;
         pendingMessage.pending = false;
+        pendingMessage.content = data.content;
+        pendingMessage.read_by = data.read_by || [];
         updateConversationPreview({
             conversation_id: data.conversation_id,
             sender_id: data.sender_id,
             content: data.content,
+            message_type: data.message_type || "user",
             created_at: data.created_at,
             read_by:data.read_by
         });
@@ -468,7 +493,10 @@ function createConversationElement(conversation){
     avatar.textContent=conversation.avatar;
     name.textContent=conversation.display_name;
     time.textContent=conversation.last_message_time?formatConversationTime(conversation.last_message_time):"...";
-    lastMessage.textContent=conversation.last_message??"No message yet";
+    if(conversation.last_message){
+        lastMessage.textContent=conversation.last_message_type==="image"?"📷 Image": conversation.last_message;
+    }
+    else lastMessage.textContent="No message yet";
 
     bottom.appendChild(lastMessage);
     top.appendChild(name);
@@ -488,6 +516,7 @@ function createConversationElement(conversation){
 }
 
 async function openConversation(conversation){
+    document.body.classList.add("mobile-chat-open");
     currentConversation=conversation;
     // console.log(currentConversation);
     conversation.unread_count = 0;
@@ -577,17 +606,34 @@ function createMessageElement(message){
     }
     const row=document.createElement("div");
     const bubble=document.createElement("div");
-    const content=document.createElement("p");
+    const isImage = message.message_type === "image";
+    const content = document.createElement(isImage ? "img" : "p");
     const meta = document.createElement("div");
     const time=document.createElement("span");
     const status=document.createElement("span");
     row.className="message-row";
     bubble.className="message-bubble";
-    content.className="message-content";
+    if (isImage) {
+        content.className = "message-image";
+        content.src = message.content;
+        content.alt = "Shared image";
+        content.loading = "lazy";
+        content.width = 320;
+        content.height = 240;
+        content.addEventListener("click", () => {
+            window.open(
+                content.src,
+                "_blank",
+                "noopener,noreferrer"
+            );
+        });
+    } else {
+        content.className = "message-content";
+        content.textContent = message.content;
+    }
     meta.className = "message-meta";
     time.className="message-time";
     status.className="message-status";
-    content.textContent=message.content;
     time.textContent=formatMessageTime(message.created_at);
     meta.appendChild(time);
     if (message.is_edited) {
@@ -668,7 +714,10 @@ function createMessageElement(message){
     deleteForEveryoneButton.addEventListener("click",() => {
         deleteMessageForAll(message.id);
     });
-    
+    if(message.sender_id!==currentUser.id){
+        editButton.classList.add("hidden");
+        deleteForEveryoneButton.classList.add("hidden");
+    }
     menu.appendChild(editButton);
     menu.appendChild(deleteForMeButton);
     menu.appendChild(deleteForEveryoneButton);
@@ -792,7 +841,7 @@ function updateConversationPreview(message){
         c => c.id === message.conversation_id
     );
     if (!conversation) return;
-    conversation.last_message = message.content;
+    conversation.last_message = message.message_type === "image"? "📷 Image": message.content;
     conversation.last_message_time = message.created_at;
     if (!currentConversation ||currentConversation.id !== message.conversation_id) {
         conversation.unread_count++;
@@ -1314,7 +1363,7 @@ async function deleteMessageForMyself(message_id) {
     const confirmation=confirm(`Do you want to delete this message?`);
     if(!confirmation)return;
     try{
-        const response= await deleteMessageForMyself(token,currentConversation.id,message_id);
+        const response= await deleteMessageForMe(token,currentConversation.id,message_id);
         if(!response.ok){
             const error = await response.json();
             alert(error.detail || "Failed to delete message.");
@@ -1387,5 +1436,46 @@ async function UpdateMessage(message){
     catch(error){
         console.error("Error editing message:", error);
         alert("Something went wrong while editing the message.");
+    }
+}
+
+async function uploadImage(){
+    const file=imageInput.files[0];
+    imageInput.value="";
+    if (!file || !currentConversation) return;
+    const allowedTypes = ["image/jpeg","image/png","image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+        alert("Only JPEG, PNG, and WebP images are allowed.");
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert("Image size must not exceed 5 MB.");
+        return;
+    }
+    attachImageBtn.disabled = true;
+    try{
+        const response=await uploadImageRequest(token,currentConversation.id,file);
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Image upload failed.");
+        }
+        const message = await response.json();
+
+        updateConversationPreview(message);
+        if (currentConversation?.id === message.conversation_id) {
+            const alreadyExists = messages.some(m => m.id === message.id);
+            if (!alreadyExists) {
+                messages.push(message);
+                renderMessages();
+            }
+        }
+    }
+    catch (error) {
+        console.error("Image upload error:", error);
+        alert(error.message || "Could not upload image.");
+    } 
+    finally {
+        attachImageBtn.disabled = false;
     }
 }

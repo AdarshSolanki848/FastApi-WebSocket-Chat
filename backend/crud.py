@@ -63,9 +63,11 @@ def build_conversation_list_item(db:Session,conversation:Conversation,user_id:in
     if last_message:
         last_message_content=last_message.content
         last_message_time=last_message.created_at.isoformat()
+        last_message_type=last_message.message_type
     else:
         last_message_content=None
         last_message_time=None
+        last_message_type="user"
     unread_count=get_unread_message_count(db,conversation.id,user_id)
     return {
             "id": conversation.id,
@@ -74,6 +76,7 @@ def build_conversation_list_item(db:Session,conversation:Conversation,user_id:in
             "avatar":display_name[0].upper() if display_name else "?",
             "last_message": last_message_content,
             "last_message_time": last_message_time,
+            "last_message_type":last_message_type,
             "unread_count": unread_count,
             "created_at":conversation.created_at.isoformat()
         }
@@ -578,6 +581,30 @@ def create_message(db:Session,conversation_id:int,sender_id:int,content:str):
             conversation_id=conversation_id,
             sender_id=sender_id,
             content=content
+        )
+        db.add(message)
+        db.commit()
+        db.refresh(message)
+        return message
+    except Exception:
+        db.rollback()
+        raise
+def create_image_message(db:Session,conversation_id:int,sender_id:int,image_path:str):
+    if not get_conversation_by_id(db,conversation_id):
+        raise ValueError("Conversation does not exist.")
+    if not get_user_by_id(db,sender_id):
+        raise ValueError("Sender does not exist.")
+    if not is_member(db,conversation_id,sender_id):
+        raise ValueError("Sender is not a member of conversation.")
+    image_path=image_path.strip()
+    if image_path=="":
+        raise ValueError("Content cannot be empty.")
+    try:
+        message=Message(
+            conversation_id=conversation_id,
+            sender_id=sender_id,
+            content=image_path,
+            message_type="image"
         )
         db.add(message)
         db.commit()

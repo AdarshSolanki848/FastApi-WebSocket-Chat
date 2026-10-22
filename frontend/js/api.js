@@ -217,3 +217,19 @@ async function editMessageRequest(token,conversation_id,message_id,content) {
         })   
     });
 }
+
+async function uploadImageRequest(token, conversation_id, file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return fetch(
+        `${API_BASE}/conversations/${conversation_id}/images`,
+        {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            },
+            body: formData
+        }
+    );
+}

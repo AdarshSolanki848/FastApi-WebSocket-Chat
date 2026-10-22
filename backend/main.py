@@ -12,12 +12,20 @@ app=FastAPI(
     title="Chat Application API",
     version="1.0.0"
 )
+UPLOAD_DIR = Path("uploads/images")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 Base.metadata.create_all(bind=engine)
 app.include_router(auth_router)
 app.include_router(conversation_router)
 app.include_router(chat_router)
 app.include_router(users_router)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads"
+)
 
 app.mount(
     "/frontend",

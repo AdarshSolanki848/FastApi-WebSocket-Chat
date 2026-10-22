@@ -1,11 +1,24 @@
 # Python
-.venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
 
-# VS Code
+# Virtual environment
+.venv/
+venv/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Uploaded images and files
+uploads/
+
+# Logs
+*.log
+
+# Editor / OS files
 .vscode/
-
-# OS
 .DS_Store
 Thumbs.db

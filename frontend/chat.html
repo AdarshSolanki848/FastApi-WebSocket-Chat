@@ -9,11 +9,12 @@
 </head>
 
 <body>
-    
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="user-info">
-                <div class="user-avatar" id="user-avatar">U</div>
+    <div class="chat-layout">
+
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
                 <div class="user-details">
                     <h3 id="username">Username</h3>
                     <p id="status">Online</p>
@@ -33,47 +34,55 @@
         <button id="new-conversation-btn">
             <i data-lucide="plus"></i>
         </button>
-    </div>
-
-    <div class="chat-container">
-        <div class="chat-header">
-            <div class="chat-info">
-                <div class="chat-avatar" id="chat-avatar">
-                    A
-                </div>
-
-                <div class="chat-details">
-                    <h2 id="chat-name">Select a Conversation</h2>
-                    <p id="chat-status">No conversation selected</p>
-                </div>
-            </div>
-            <div class="chat-actions">
-                <button id="add-member-btn" class="add-member hidden">
-                    <i data-lucide="user-plus"></i>
-                </button>
-                <button type="button" id="chat-menu-btn" class="hidden">
-                    <i data-lucide="ellipsis-vertical"></i>
-                </button>
-            </div>
         </div>
-        <div class="messages-container" id="messages-container">
-            <div class="empty-chat" id="empty-chat">
-                <div class="empty-chat-icon">
-                    💬
+
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="chat-info">
+                    <button type="button" id="back-to-conversations" class="mobile-back-btn"aria-label="Back to conversations">
+                        <i data-lucide="arrow-left"></i>
+                    </button>
+                    <div class="chat-avatar" id="chat-avatar">
+                        A
+                    </div>
+
+                    <div class="chat-details">
+                        <h2 id="chat-name">Select a Conversation</h2>
+                        <p id="chat-status">No conversation selected</p>
+                    </div>
                 </div>
-                <h2>Select a Conversation</h2>
-                <p>
-                    Choose a conversation from the sidebar
-                    or create a new one.
-                </p>
+                <div class="chat-actions">
+                    <button id="add-member-btn" class="add-member hidden">
+                        <i data-lucide="user-plus"></i>
+                    </button>
+                    <button type="button" id="chat-menu-btn" class="hidden">
+                        <i data-lucide="ellipsis-vertical"></i>
+                    </button>
+                </div>
             </div>
-        </div>
-        <div class="message-input-container">
-            <div class="message-input-wrapper">
-                <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
-                <button type="button" id="send-message-btn">
-                    <i data-lucide="send"></i>
-                </button>
+            <div class="messages-container" id="messages-container">
+                <div class="empty-chat" id="empty-chat">
+                    <div class="empty-chat-icon">
+                        💬
+                    </div>
+                    <h2>Select a Conversation</h2>
+                    <p>
+                        Choose a conversation from the sidebar
+                        or create a new one.
+                    </p>
+                </div>
+            </div>
+            <div class="message-input-container">
+                <div class="message-input-wrapper">
+                    <button type="button" id="attach-image-btn" title="Attach image">
+                        <i data-lucide="image"></i>
+                    </button>
+                    <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" class="hidden">
+                    <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+                    <button type="button" id="send-message-btn">
+                        <i data-lucide="send"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -182,6 +191,7 @@
             </div>
         </div>
     </div>
+
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>

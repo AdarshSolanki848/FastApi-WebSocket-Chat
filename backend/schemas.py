@@ -89,12 +89,14 @@ class ConversationListItem(BaseModel):
     avatar: str
     last_message: str | None
     last_message_time: datetime | None
+    last_message_type:str
     unread_count: int
     created_at:datetime
     model_config = ConfigDict(from_attributes=True)
 
 class UpdateGroupNameRequest(BaseModel):
     name:str
+
 class EditMessageRequest(BaseModel):
     content:str
     model_config = ConfigDict(str_strip_whitespace=True)

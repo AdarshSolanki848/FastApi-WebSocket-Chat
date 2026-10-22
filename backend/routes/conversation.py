@@ -23,6 +23,20 @@ from schemas import (
     EditMessageRequest
 )
 
+from pathlib import Path
+from uuid import uuid4
+from fastapi import UploadFile,File
+from PIL import Image
+
+UPLOAD_DIR = Path("uploads/images")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+ALLOWED_FORMATS = {
+    "JPEG": ".jpg",
+    "PNG": ".png",
+    "WEBP": ".webp",
+}
+
 router=APIRouter(prefix="/conversations",tags=["Conversations"])
 
 @router.post("/private",response_model=ConversationListItem)
@@ -220,6 +234,108 @@ def create_messages(
             status_code=400,
             detail=str(e)
         )
+
+@router.post("/{conversation_id}/images",response_model=MessageResponse)
+async def upload_image(
+    conversation_id:int,
+    file:UploadFile=File(...),
+    db:Session=Depends(get_db),
+    current_user:User=Depends(get_current_user)
+):
+    conversation=crud.get_conversation_by_id(db,conversation_id)
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation does not exist."
+        )
+    if not crud.is_member(db,conversation_id,current_user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="You are not a member of this conversation."
+        )
+    if file.content_type not in {"image/jpeg","image/png","image/webp",}:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPEG, PNG, and WebP images are allowed."
+        )
+    file_path=None
+    try:
+        image_bytes=file.file.read(MAX_IMAGE_SIZE+1)
+        if not image_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded image is empty."
+            )
+        if len(image_bytes) > MAX_IMAGE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail="Image size must not exceed 5 MB."
+            )
+        import io
+        with Image.open(io.BytesIO(image_bytes)) as image:
+            image_format = image.format
+            image.verify()
+        if image_format not in ALLOWED_FORMATS:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported image format."
+            )
+        filename = f"{uuid4().hex}{ALLOWED_FORMATS[image_format]}"
+        file_path = UPLOAD_DIR / filename
+        file_path.write_bytes(image_bytes)
+        image_url = f"/uploads/images/{filename}"
+
+        message = crud.create_image_message(
+            db,
+            conversation_id,
+            current_user.id,
+            image_url,
+        )
+        members=crud.get_conversation_members(db,conversation_id)
+        payload = {
+            "type": "new_message",
+            "message_id": message.id,
+            "conversation_id": message.conversation_id,
+            "sender_id": message.sender_id,
+            "content": message.content,
+            "message_type": message.message_type,
+            "is_edited": message.is_edited,
+            "created_at": message.created_at.isoformat(),
+            "read_by": []
+        }
+
+        for member in members:
+            await manager.send_to_user(member.user_id, payload)
+        return message
+
+    except HTTPException:
+        if file_path and file_path.exists():
+            file_path.unlink()
+        raise
+    except (Image.UnidentifiedImageError, OSError):
+        if file_path and file_path.exists():
+            file_path.unlink()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or corrupted image file."
+        )
+    except ValueError as e:
+        if file_path and file_path.exists():
+            file_path.unlink()
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception:
+        if file_path and file_path.exists():
+            file_path.unlink()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to upload image."
+        )
+    finally:
+        file.file.close()
+
 
 @router.delete("/{conversation_id}/messages/{message_id}/delete_for_me",response_model=HiddenMessageResponse)
 async def delete_for_me(
