@@ -599,12 +599,22 @@ async function createMessageElement(message){
     const row=document.createElement("div");
     const bubble=document.createElement("div");
     const isImage = message.message_type === "image";
+    // const senderNameElement = document.createElement("div");
+    const senderHeader = document.createElement("div");
+    const senderName = document.createElement("span");
+    const avatar = document.createElement("div");
     const content = document.createElement(isImage ? "img" : "p");
     const meta = document.createElement("div");
     const time=document.createElement("span");
     const status=document.createElement("span");
     row.className="message-row";
     bubble.className="message-bubble";
+    senderHeader.className = "message-sender-header";
+    senderName.className = "message-sender-name";
+    avatar.className = "message-avatar";
+    senderName.textContent = message.sender_name || "Unknown";
+    avatar.textContent =message.sender_name?message.sender_name[0].toUpperCase():"U";
+    avatar.setAttribute("aria-label", senderName);
     if (isImage) {
         content.className = "message-image";
         content.src = "";
@@ -650,7 +660,7 @@ async function createMessageElement(message){
         editedLabel.textContent = "edited";
         meta.appendChild(editedLabel);
     }
-    if(message.sender_id==currentUser.id){
+    if(message.sender_id===currentUser.id){
         row.classList.add("outgoing");
         if (message.pending) {
             status.innerHTML = `
@@ -672,6 +682,11 @@ async function createMessageElement(message){
     }
     else{
         row.classList.add("incoming");
+        if (currentConversation.type === "group") {
+            senderHeader.appendChild(avatar);
+            senderHeader.appendChild(senderName);
+            bubble.appendChild(senderHeader);
+        }
     }
     bubble.appendChild(content);
     bubble.appendChild(meta);
