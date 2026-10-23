@@ -589,6 +589,7 @@ def create_message(db:Session,conversation_id:int,sender_id:int,content:str):
     except Exception:
         db.rollback()
         raise
+
 def create_image_message(db:Session,conversation_id:int,sender_id:int,image_path:str):
     if not get_conversation_by_id(db,conversation_id):
         raise ValueError("Conversation does not exist.")

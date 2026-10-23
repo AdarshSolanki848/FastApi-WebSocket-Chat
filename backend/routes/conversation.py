@@ -183,6 +183,7 @@ def get_conversation_messages(conversation_id:int,
                 id=message.id,
                 conversation_id=message.conversation_id,
                 sender_id=message.sender_id,
+                sender_name=message.sender.username if message.sender else None,
                 content=message.content,
                 message_type=message.message_type,
                 system_action=message.system_action,
@@ -228,7 +229,18 @@ def create_messages(
             current_user.id,
             request.content
         )
-        return message
+        return MessageResponse(
+            id=message.id,
+            conversation_id=message.conversation_id,
+            sender_id=message.sender_id,
+            sender_name=current_user.username,
+            content=message.content,
+            message_type=message.message_type,
+            system_action=message.system_action,
+            created_at=message.created_at,
+            is_edited=message.is_edited,
+            read_by=[]
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -310,6 +322,7 @@ async def upload_image(
             "message_id": message.id,
             "conversation_id": message.conversation_id,
             "sender_id": message.sender_id,
+            "sender_name": current_user.username,
             "content": message.content,
             "message_type": message.message_type,
             "is_edited": message.is_edited,
@@ -319,7 +332,18 @@ async def upload_image(
 
         for member in members:
             await manager.send_to_user(member.user_id, payload)
-        return message
+        return MessageResponse(
+            id=message.id,
+            conversation_id=message.conversation_id,
+            sender_id=message.sender_id,
+            sender_name=current_user.username,
+            content=message.content,
+            message_type=message.message_type,
+            system_action=message.system_action,
+            created_at=message.created_at,
+            is_edited=message.is_edited,
+            read_by=[]
+        )
 
     except HTTPException:
         if uploaded and object_key:
@@ -791,6 +815,7 @@ async def edit_message(
             id=message.id,
             conversation_id=message.conversation_id,
             sender_id=message.sender_id,
+            sender_name=current_user.username,
             content=message.content,
             message_type=message.message_type,
             system_action=message.system_action,

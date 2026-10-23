@@ -47,6 +47,7 @@ class MessageResponse(BaseModel):
     content: str
     conversation_id: int
     sender_id: int | None
+    sender_name: str | None
     message_type: str
     system_action: str | None
     created_at: datetime
